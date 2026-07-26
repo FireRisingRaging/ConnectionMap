@@ -126,7 +126,7 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    width: 340px;
+    width: 440px;
     max-width: calc(100vw - 32px);
     max-height: calc(100vh - 64px);
     max-height: calc(100dvh - 64px);
@@ -191,6 +191,7 @@
   .settings-row-control {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
   }
   .settings-row-control input[type="number"] {
@@ -989,12 +990,20 @@
     background: var(--bg-card2);
     flex-shrink: 0;
   }
+  /* Apply hugs the right edge of the button row and always stays on it. */
+  #editor-apply { margin-left: auto; }
+  /* The draft note sits on its own line below the buttons, so it can never
+     push "Apply to Map" off the toolbar. Hidden entirely when there's no text. */
   #editor-draft-note {
-    margin-left: auto;
+    order: 10;
+    flex-basis: 100%;
+    text-align: right;
+    margin: 0;
     font-size: 0.74rem;
     color: var(--text-dim);
     font-style: italic;
   }
+  #editor-draft-note:empty { display: none; }
   #editor-draft-note.dirty { color: var(--green); font-style: normal; }
   #editor-modal-body {
     padding: 14px 16px;
