@@ -1,0 +1,4907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMO Connection Map</title>
+<link rel="icon" href="connection.png">
+<style>
+  :root {
+    --bg:          #181818;
+    --bg-card:     #242424;
+    --bg-card2:    #2e2e2e;
+    --bg-hover:    #383838;
+    --text:        #ffffff;
+    --text-dim:    #aaaaaa;
+    --accent:      #5865f2;
+    --accent-h:    #4752c4;
+    --green:       #4ade80;
+    --red:         #f87171;
+    --border:      #3a3a3a;
+    --highlight-color: #0afbff;
+    --radius:      10px;
+    --radius-sm:   6px;
+    --btn-bg:      #333333;
+    --btn-hover:   #444444;
+    --font:        'Arial Rounded MT Bold', 'Arial', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Cohesive scrollbars (match dark theme instead of default white) ── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--btn-bg) var(--bg-card2);
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: var(--bg-card2); }
+  *::-webkit-scrollbar-thumb {
+    background: var(--btn-bg);
+    border-radius: 20px;
+    border: 2px solid var(--bg-card2);
+  }
+  *::-webkit-scrollbar-thumb:hover { background: var(--btn-hover); }
+  *::-webkit-scrollbar-corner { background: var(--bg-card2); }
+
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── Top bar ───────────────────────────────────────────────── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  #topbar h1 { font-size: 1.05rem; margin-right: auto; }
+  .map-btn {
+    background: var(--btn-bg);
+    border: none;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .map-btn:hover { background: var(--btn-hover); }
+  .map-btn.active { background: var(--accent); }
+  .map-btn.active:hover { background: var(--accent-h); }
+  .map-btn.danger { color: var(--red); }
+  .map-btn.danger:hover { background: #3a2020; }
+
+  .topbar-sep {
+    width: 1px; height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ── Collapsible panels ─────────────────────────────────────── */
+  .side-panel {
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .side-panel.hidden { display: none; }
+
+  #controls-panel ul { padding-left: 18px; }
+  #controls-panel strong { color: var(--text); }
+
+  .controls-mobile { display: none; }
+  @media (pointer: coarse) {
+    .controls-desktop { display: none; }
+    .controls-mobile  { display: block; }
+  }
+
+  /* ── Settings modal ────────────────────────────────────────── */
+  #settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #settings-overlay.visible { display: flex; }
+
+  #settings-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 64px);
+    max-height: calc(100dvh - 64px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #settings-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #settings-modal-header h2 {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: var(--text);
+  }
+  #settings-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  #settings-modal-close:hover { color: var(--red); }
+
+  #settings-modal-body {
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .settings-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .settings-row-label {
+    font-size: 0.82rem;
+    font-weight: bold;
+    color: var(--text);
+  }
+  .settings-row-desc {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .settings-row-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .settings-row-control input[type="number"] {
+    width: 50px;
+    height: 30px;
+    background: var(--bg-card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.83rem;
+    text-align: center;
+    padding: 0 4px;
+    outline: none;
+  }
+  .settings-row-control input[type="number"]:focus { border-color: var(--accent); }
+  .settings-row-control .x-sep { color: var(--text-dim); font-size: 0.83rem; }
+  .settings-row-control input[type="color"] {
+    width: 40px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card2);
+    cursor: pointer;
+  }
+  .settings-save-msg {
+    font-size: 0.78rem;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .settings-save-msg.visible { opacity: 1; }
+  .settings-divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Arrow Color sub-options (Random / One Color / Kingdom Gradients) */
+  .arrow-color-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Toggle switch */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--btn-bg);
+    border-radius: 20px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+  .toggle-label { font-size: 0.83rem; color: var(--text); cursor: pointer; }
+
+  /* ── Main area (wraps display + viewport) ───────────────────── */
+  #main-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+  #main-area.dp-top    { flex-direction: column; }
+  #main-area.dp-bottom { flex-direction: column; }
+  #main-area.dp-left   { flex-direction: row; }
+  #main-area.dp-right  { flex-direction: row; }
+
+  /* Display panel */
+  #display-panel {
+    position: relative;
+    overflow: hidden;
+    font-size: 0.84rem;
+    flex-shrink: 0;
+    padding: 0;
+    border-bottom: none; /* overridden by position classes below */
+  }
+  /* Scrollable inner wrapper keeps the resize handle fixed to the panel
+     edge regardless of scroll position, since the handle now lives outside
+     the scrolling element instead of scrolling along with its content. */
+  #display-panel-content {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 16px;
+  }
+  .dp-top    #display-panel { border-bottom: 1px solid var(--border); order: 0; }
+  .dp-bottom #display-panel { border-top:    1px solid var(--border); order: 1; }
+  .dp-left   #display-panel { border-right:  1px solid var(--border); order: 0; }
+  .dp-right  #display-panel { border-left:   1px solid var(--border); order: 1; }
+
+  #display-panel .empty-note { color: var(--text-dim); font-style: italic; }
+  .chain-row { display: flex; align-items: center; flex-wrap: wrap; padding: 3px 4px; line-height: 1.5; border-radius: 6px; cursor: pointer; transition: box-shadow 0.1s, background 0.1s; }
+  .chain-row:hover { background: var(--bg-hover); }
+  .chain-row.chain-highlight {
+    box-shadow: 0 0 0 2px var(--highlight-color, #ffd60a);
+    background: rgba(255,255,255,0.04);
+  }
+  .chain-row .seg-tag {
+    color: var(--text-dim);
+    font-size: 0.88em;
+    margin: 0 3px;
+  }
+  .chain-row .arrow { color: var(--text-dim); margin: 0 4px; }
+  .chain-row .loop-tag { color: var(--text-dim); font-size: 0.78rem; margin-left: 6px; }
+  /* Painting chains: white arrows, no letter, and a subtle indent so they read
+     as a distinct group at the top of the panel. */
+  .chain-row.painting-chain-row { padding-left: 8px; }
+  .chain-row.painting-chain-row .arrow { color: #ffffff; }
+  .chain-row.painting-chain-row + .chain-row:not(.painting-chain-row) {
+    border-top: 1px solid var(--border);
+    margin-top: 3px;
+    padding-top: 5px;
+  }
+
+  /* Chain label badge (in display panel rows) */
+  .chain-label-badge {
+    font-size: 0.72rem;
+    font-weight: bold;
+    min-width: 16px;
+    margin-right: 5px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  /* ── Display panel resize handle ─────────────────────────────── */
+  #display-resize-handle {
+    position: absolute;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dp-top #display-resize-handle, .dp-bottom #display-resize-handle {
+    bottom: 0; left: 0; right: 0; height: 10px;
+    cursor: ns-resize;
+  }
+  .dp-bottom #display-resize-handle { bottom: auto; top: 0; }
+  .dp-left  #display-resize-handle  { top: 0; bottom: 0; right: 0; width: 10px; cursor: ew-resize; left: auto; }
+  .dp-right #display-resize-handle  { top: 0; bottom: 0; left: 0;  width: 10px; cursor: ew-resize; right: auto; }
+
+  #display-resize-handle::after {
+    content: '';
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+  .dp-top #display-resize-handle::after, .dp-bottom #display-resize-handle::after {
+    width: 40px; height: 3px;
+  }
+  .dp-left #display-resize-handle::after, .dp-right #display-resize-handle::after {
+    width: 3px; height: 40px;
+  }
+  #display-resize-handle:hover::after,
+  #display-resize-handle.dragging::after { background: var(--accent); }
+
+  /* ── Chain picker popup ──────────────────────────────────────── */
+  .chain-picker-popup {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+    min-width: 100px;
+    max-width: 240px;
+  }
+  .chain-picker-header {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 7px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+  }
+  .chain-picker-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chain-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 2px solid currentColor;
+    font-size: 0.72rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.1s;
+    user-select: none;
+  }
+  .chain-badge:hover { transform: scale(1.18); }
+  .chain-badge-active { box-shadow: 0 0 0 2px #fff; }
+  .chain-badge-new {
+    color: var(--text-dim) !important;
+    border-color: var(--text-dim) !important;
+    font-size: 1.1rem;
+  }
+  .chain-badge-new:hover { color: var(--green) !important; border-color: var(--green) !important; }
+
+  /* ── Arrow chain tooltip (hover label) ──────────────────────── */
+  #arrow-chain-tooltip {
+    position: fixed;
+    z-index: 900;
+    background: var(--bg-card);
+    border: 2px solid;
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 0.78rem;
+    font-weight: bold;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+  }
+
+  /* Settings select */
+  .settings-row-control select {
+    background: var(--bg-card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.83rem;
+    padding: 4px 8px;
+    height: 30px;
+    outline: none;
+    cursor: pointer;
+  }
+  .settings-row-control select:focus { border-color: var(--accent); }
+
+  /* ── Canvas viewport ─────────────────────────────────────────── */
+  #viewport {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  #viewport.panning { cursor: grabbing; }
+  #viewport.cluster-dragging { cursor: move; }
+
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+  }
+
+  svg#lines-layer {
+    position: absolute;
+    top: 0; left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  /* ── Cluster panels ─────────────────────────────────────────── */
+  .cluster-bg {
+    position: absolute;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: move;
+    /* prevent text selection while dragging */
+    user-select: none;
+  }
+  .cluster-bg:hover { border-color: rgba(88,101,242,0.3); }
+  .cluster-bg.dragging-cluster { border-color: var(--accent); z-index: 50; }
+
+  /* Resize handle – bottom-right triangle (width) */
+  .cluster-resize-handle {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 18px; height: 18px;
+    cursor: se-resize;
+    z-index: 10;
+    /* Painted as a bottom-right triangle via clip-path */
+    background: var(--border);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    border-radius: 0 0 var(--radius) 0;
+    transition: background 0.15s;
+  }
+  .cluster-resize-handle:hover { background: var(--accent); }
+
+  /* Resize handle – bottom-center bar (height) */
+  .cluster-resize-height-handle {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px; height: 8px;
+    cursor: s-resize;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cluster-resize-height-handle::after {
+    content: '';
+    width: 28px; height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+  .cluster-resize-height-handle:hover::after { background: var(--accent); }
+
+  /* ── Freeform sticky notes ───────────────────────────────────── */
+  /* Sit above the arrows (lines-layer) and nodes so they read as annotations.
+     Gray outline matches the kingdom panels. */
+  .map-note-sticky {
+    position: absolute;
+    z-index: 60;
+    background: rgba(36,36,36,0.94);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    user-select: none;
+  }
+  .map-note-sticky.note-dragging { z-index: 80; border-color: var(--accent); }
+  .map-note-sticky.note-editing  { border-color: var(--accent); cursor: text; }
+
+  .note-content {
+    padding: 7px 9px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    cursor: move;
+    min-height: 20px;
+  }
+  .map-note-sticky.note-editing .note-content { cursor: text; }
+  .note-content.empty-note-hint { color: var(--text-dim); font-style: italic; }
+
+  .note-content img.note-icon {
+    height: 18px; width: 18px;
+    object-fit: contain;
+    vertical-align: -4px;
+    margin: 0 1px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .note-content img.note-icon:hover { outline: 2px solid var(--accent); }
+
+  .note-edit-area {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    padding: 7px 9px;
+    resize: none;
+    overflow: hidden;
+    display: block;
+  }
+
+  /* Width resize handle - bottom-right corner (height auto-follows content) */
+  .note-resize-handle {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 16px; height: 16px;
+    cursor: ew-resize;
+    z-index: 2;
+    background: var(--border);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    border-radius: 0 0 var(--radius-sm) 0;
+    transition: background 0.15s;
+  }
+  .note-resize-handle:hover { background: var(--accent); }
+
+  /* Note icon picker popup */
+  #note-icon-picker {
+    position: fixed;
+    z-index: 900;
+    display: none;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    max-width: 190px;
+  }
+  #note-icon-picker.open { display: grid; }
+  #note-icon-picker img {
+    height: 26px; width: 26px;
+    object-fit: contain;
+    padding: 3px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #note-icon-picker img:hover { background: var(--bg-hover); }
+
+  /* ── Nodes ───────────────────────────────────────────────────── */
+  .map-node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    padding: 0 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .map-node:hover {
+    border-color: var(--accent);
+    transform: scale(1.04);
+    z-index: 5;
+  }
+  /* Individual segment highlighted as a drop target while dragging an arrow */
+  .map-node .drop-target {
+    background: rgba(74,222,128,0.30);
+    box-shadow: inset 0 0 0 1.5px var(--green);
+  }
+  .map-node.drag-target {
+    border-color: var(--green);
+    background: rgba(74,222,128,0.15);
+  }
+  .map-node.kingdom-node {
+    font-weight: bold;
+    font-size: 0.85rem;
+    background: var(--bg-card2);
+    border-width: 2px;
+    cursor: move; /* header drag hint */
+  }
+  .map-node.kingdom-node img {
+    height: 18px; width: 18px;
+    object-fit: contain; flex-shrink: 0;
+  }
+  .map-node.mark-green {
+    border-color: var(--green);
+    background-color: rgba(74,222,128,0.18);
+  }
+  .map-node.mark-red {
+    border-color: var(--red);
+    background-color: rgba(248,113,113,0.18);
+  }
+  .map-node.dead-end {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.09) 0px,
+      rgba(255,255,255,0.09) 2px,
+      transparent 2px,
+      transparent 8px
+    );
+  }
+  .map-node.connect-rejected {
+    animation: rejected-flash 0.35s ease;
+  }
+  @keyframes rejected-flash {
+    0%, 100% { box-shadow: none; }
+    30% { box-shadow: 0 0 0 3px var(--red); }
+  }
+  .map-node.chain-highlight {
+    box-shadow: 0 0 0 3px var(--highlight-color, #ffd60a);
+    z-index: 6;
+  }
+  .map-node .node-label { overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── Segmented node ends (in / out) ──────────────────────────── */
+  .map-node.segmented { padding: 0; gap: 0; }
+  .map-node.segmented .node-label {
+    flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 6px;
+    min-width: 0;
+  }
+  .map-node .node-seg {
+    flex: 0 0 auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    font-size: 0.62rem;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+  }
+  .map-node .node-seg-in  { border-right: 1px solid; }
+  .map-node .node-seg-out { border-left:  1px solid; }
+
+  /* ── Decouple: per-node move handle ──────────────────────────── */
+  .node-move-handle {
+    position: absolute;
+    right: 0; bottom: 0;
+    width: 13px; height: 13px;
+    cursor: move;
+    z-index: 3;
+    background: var(--border);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    border-radius: 0 0 var(--radius-sm) 0;
+    transition: background 0.15s;
+  }
+  .node-move-handle:hover { background: var(--accent); }
+  .map-node.node-moving {
+    z-index: 8;
+    transform: none !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+  }
+
+  /* Sub-option row nested under a settings toggle */
+  .settings-suboption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+  }
+  .settings-suboption.disabled { opacity: 0.45; pointer-events: none; }
+  .settings-suboption .sub-label { font-size: 0.8rem; color: var(--text-dim); }
+  .settings-row-note {
+    font-size: 0.74rem;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-top: 8px;
+  }
+
+  /* ── Zoom control ───────────────────────────────────────────── */
+  #zoom-control {
+    position: absolute;
+    bottom: 10px; right: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(36,36,36,0.90);
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    user-select: none;
+  }
+  #zoom-readout {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    min-width: 38px;
+    text-align: center;
+    transition: color 0.15s;
+  }
+  #zoom-readout:hover { color: var(--text); }
+  #zoom-input {
+    width: 46px;
+    font-size: 0.75rem;
+    font-family: var(--font);
+    background: var(--bg-card2);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 1px 4px;
+    text-align: center;
+    outline: none;
+  }
+  #zoom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 110px; height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  #zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  #zoom-slider::-moz-range-thumb {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+
+  #author-credit {
+    position: absolute;
+    bottom: 10px; left: 14px;
+    background: rgba(36,36,36,0.90);
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* ── Zone Image Viewer ──────────────────────────────────────── */
+  #image-viewer {
+    position: fixed;
+    top: 80px; left: 50%;
+    transform: translateX(-50%);
+    width: 380px;
+    min-width: 180px;
+    min-height: 120px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  #image-viewer.visible { display: flex; }
+
+  #image-viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    cursor: move;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  #image-viewer-title {
+    font-size: 0.82rem;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  #image-viewer-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  #image-viewer-close:hover { color: var(--red); }
+
+  #image-viewer-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 80px;
+    padding: 8px;
+  }
+
+  #image-viewer img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    border-radius: 4px;
+  }
+  #image-viewer .img-placeholder {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  #image-viewer .img-todo {
+    color: #f5a623;
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 4px 0 0;
+  }
+
+  /* Resize handle for image viewer */
+  #image-viewer-resize {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 18px; height: 18px;
+    cursor: se-resize;
+    background: rgba(88,101,242,0.4);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    z-index: 10;
+  }
+  #image-viewer-resize:hover { background: var(--accent); }
+
+  /* ── Mobile-only overrides ─────────────────────────────────── */
+  @media (pointer: coarse) {
+    /* Image viewer fills most of the screen on touch devices */
+    #image-viewer {
+      top: 5vh;
+      left: 5vw;
+      transform: none;
+      width: 90vw;
+      height: 85vh;
+      min-width: unset;
+      min-height: unset;
+    }
+    /* Clip the zoomed image to the body area */
+    #image-viewer-body { overflow: hidden; }
+    /* No resize handle viewer is already full-screen */
+    #image-viewer-resize { display: none; }
+    /* Header is not draggable on mobile */
+    #image-viewer-header { cursor: default; }
+    /* Show a grab cursor while image is zoomed */
+    #image-viewer img { cursor: grab; }
+    /* Activated cluster panel gets an accent border */
+    .cluster-bg.mobile-active {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <h1>SMO Connection Map</h1>
+    <button class="map-btn" id="btn-controls">Info & Controls</button>
+    <button class="map-btn" id="btn-settings">Settings</button>
+    <button class="map-btn active" id="btn-display">Hide Display</button>
+    <div class="topbar-sep"></div>
+    <button class="map-btn danger" id="btn-clear">Clear</button>
+  </div>
+
+  <!-- Controls panel -->
+  <div id="controls-panel" class="side-panel hidden">
+    <!-- Desktop controls -->
+    <div class="controls-desktop">
+    <strong>Controls</strong>
+    <ul>
+      <li><strong>Left Mouse Button</strong> hold and drag a zone/kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Kingdom nodes are never split, so arrows meet them anywhere along their border. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
+      <li><strong>Single-click a node</strong> to highlight every chain going in and out of it, each chain in its own color. Click it again (or empty canvas) to clear.</li>
+      <li><strong>Double Left Mouse Button</strong> on a node to remove ALL of its outgoing arrows at once.</li>
+      <li><strong>Double-click an arrow</strong> to remove just that connection and split its chain (the part after the break becomes a new chain).</li>
+      <li><strong>Click an arrow</strong> on the map (or a path in the Display panel) to highlight that path on both; click again to unhighlight.</li>
+      <li><strong>Middle Mouse Button</strong> to mark/unmark a stage green. <strong>Right Mouse Button</strong> to mark/unmark a stage red.</li>
+      <li><strong>Drag the panel background or kingdom header</strong> to move a kingdom panel.</li>
+      <li><strong>Triangle handle</strong> (bottom-right of each panel) to resize it. Zones reflow automatically in that space.</li>
+      <li><strong>Hold for 1 second</strong> on a node (with Stage Previews on) to view its loading zone screenshot.</li>
+      <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. It moves and it never resizes. Dragging anywhere else on the node still draws an arrow.</li>
+      <li><strong>Hover</strong> over an arrow to see what letter chain it is part of.</li>
+      <li><strong>Single-click</strong> an arrow to view its chain and what chain it can be linked to or add it to a new chain.</li>
+      <li>Scroll to zoom, drag empty space to pan.</li>
+    </ul>
+    </div>
+    <!-- Mobile controls -->
+    <div class="controls-mobile">
+      <strong>Controls</strong>
+      <ul>
+        <li><strong>Hold and drag</strong> any zone or kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit). Kingdom nodes stay whole.</li>
+        <li><strong>Double-tap</strong> a node to remove ALL of its outgoing arrows at once.</li>
+        <li><strong>Tap a path</strong> in the Display panel to highlight it on the map; tap again to unhighlight.</li>
+        <li><strong>Single tap</strong> a node to cycle its color: green → red → none.</li>
+        <li><strong>Tap once</strong> a panel's empty background to select it (border lights up), then <strong>drag</strong> from that background to move it. Deactivates automatically when you lift your finger.</li>
+        <li><strong>Triangle handle</strong> (bottom-right of each panel): drag to resize it. Zones reflow automatically.</li>
+        <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. Dragging anywhere else still draws an arrow.</li>
+        <li><strong>Hold for 1 second</strong> on a node without moving (Stage Previews must be on) to view its loading zone screenshot. Moving your finger cancels it and starts a connection drag instead.</li>
+        <li>Pinch to zoom, drag empty canvas to pan.</li>
+      </ul>
+    </div>
+    <!-- Info same on all devices -->
+    <strong>Info</strong>
+    <ul>
+      <li>The <strong>striped loading zones</strong> represent one-ways, one entrance in or out.</li>
+    </ul>
+  </div>
+
+  <div id="main-area" class="dp-top">
+    <!-- Display panel -->
+    <div id="display-panel" class="side-panel">
+      <div id="display-panel-content"></div>
+      <div id="display-resize-handle"></div>
+    </div>
+
+    <div id="viewport">
+      <div id="canvas">
+        <svg id="lines-layer"></svg>
+      </div>
+      <div id="author-credit">Made by FireRisingRaging and gmo7</div>
+      <div id="zoom-control">
+        <input id="zoom-slider" type="range" min="60" max="120" value="80" step="1" title="Zoom">
+        <span id="zoom-readout" title="Click to type a zoom value">80%</span>
+        <input id="zoom-input" type="number" min="60" max="120" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow chain tooltip -->
+<div id="arrow-chain-tooltip"></div>
+
+<!-- Icon picker for {icon} tokens inside notes -->
+<div id="note-icon-picker"></div>
+
+<!-- Settings modal -->
+<div id="settings-overlay">
+  <div id="settings-modal">
+    <div id="settings-modal-header">
+      <h2>Settings</h2>
+      <button id="settings-modal-close" title="Close">✕</button>
+    </div>
+    <div id="settings-modal-body">
+
+      <div class="settings-row">
+        <div class="settings-row-label">Grid Layout</div>
+        <div class="settings-row-desc">Set how many columns to arrange kingdom panels in. Rows are calculated automatically. Resets any manual panel positions and sizes.</div>
+        <div class="settings-row-control">
+          <input type="number" id="grid-cols" min="1" max="15" value="4" title="Columns">
+          <span class="x-sep">cols</span>
+          <button class="map-btn" id="btn-apply-grid">Apply</button>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Stage Previews</div>
+        <div class="settings-row-desc">Click and hold any kingdom or zone node to view its loading zone screenshot.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-images">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-images">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-images-label">Off</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Painting Tracker</div>
+        <div class="settings-row-desc">Adds a Paintings section. Paintings only connect to other paintings, show at the top of the Display, and have white arrows.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-painting">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-painting">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-painting-label">Off</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Segmented Nodes</div>
+        <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right. Kingdom nodes are left whole. </div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-segmented">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-segmented">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-segmented-label">Off</span>
+          </label>
+        </div>
+        <div class="settings-suboption disabled" id="segment-style-row">
+          <span class="sub-label">Segment labels</span>
+          <div class="settings-row-control">
+            <select id="segment-style">
+              <option value="inout">In / Out</option>
+              <option value="enterexit">Enter / Exit</option>
+              <option value="tofrom">To / From</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Decouple</div>
+        <div class="settings-row-desc">Frees every node from its kingdom panel so it can be placed anywhere on the map. Each node gets a small triangle in its bottom-right corner: drag that to move the node; dragging anywhere else still draws an arrow. The triangle does not resize nodes.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-decouple">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-decouple">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-decouple-label">Off</span>
+          </label>
+        </div>
+        <div class="settings-row-note">Note: node positions are saved while Decouple is on, but turning it off does not keep them. The map returns to grouped panels at 4 columns (all arrows are kept).</div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Arrow Color</div>
+         <div class="settings-row-desc">Choose how connection arrows are colored on the map.</div>
+
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-random-colors">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-random-colors" data-mode="random" checked>
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-random-colors-label">Random Color</span>
+          </label>
+        </div>
+
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-one-color">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-one-color" data-mode="one">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">One Color</span>
+          </label>
+          <div class="settings-row-control">
+            <input type="color" id="arrow-color" value="#7c87f5">
+            <button class="map-btn" id="btn-save-arrow-color">Save</button>
+            <span class="settings-save-msg" id="arrow-color-saved">Saved!</span>
+          </div>
+        </div>
+
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-kingdom-gradients">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-kingdom-gradients" data-mode="gradient">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">Kingdom Gradients</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Chain Highlighting</div>
+        <div class="settings-row-desc">Hover or click an arrow on the map (or a path in the Display panel) to highlight it on both.</div>
+        <div class="settings-row-control">
+          <label class="toggle-wrap" for="toggle-highlight">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-highlight">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label" id="toggle-highlight-label">On</span>
+            <input type="color" id="highlight-color" value="#ffd60a">
+            <button class="map-btn" id="btn-save-highlight-color">Save</button>
+            <span class="settings-save-msg" id="highlight-color-saved">Saved!</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Kingdoms</div>
+        <div class="settings-row-desc">Toggle whether a kingdom (and its zones) appears on the map. Any arrows connected to a hidden kingdom are removed from view until it's shown again.</div>
+
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-kingdom-Moon">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-kingdom-Moon" data-kingdom="Moon" checked>
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">Moon Kingdom</span>
+          </label>
+        </div>
+
+        <div class="arrow-color-option">
+          <label class="toggle-wrap" for="toggle-kingdom-Cloud">
+            <span class="toggle-switch">
+              <input type="checkbox" id="toggle-kingdom-Cloud" data-kingdom="Cloud" checked>
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">Cloud Kingdom</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">Display Panel Position</div>
+        <div class="settings-row-desc">Choose where the chain display panel appears relative to the map canvas.</div>
+        <div class="settings-row-control">
+          <select id="display-position-select">
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Zone Image Viewer -->
+<div id="image-viewer">
+  <div id="image-viewer-header">
+    <span id="image-viewer-title">Zone Name</span>
+    <button id="image-viewer-close" title="Close">✕</button>
+  </div>
+  <div id="image-viewer-body">
+    <!-- content injected by JS -->
+  </div>
+  <div id="image-viewer-resize" title="Drag to resize"></div>
+</div>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────
+// Mobile detection & image-viewer zoom state
+// ─────────────────────────────────────────────────────────────────
+const IS_MOBILE = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+// Per-open zoom/pan state for the mobile image viewer
+let mobileImgScale = 1, mobileImgPanX = 0, mobileImgPanY = 0;
+
+function resetMobileImgZoom() {
+  mobileImgScale = 1; mobileImgPanX = 0; mobileImgPanY = 0;
+  const img = document.querySelector('#image-viewer-body img');
+  if (img) img.style.transform = '';
+}
+
+function applyMobileImgTransform() {
+  const img = document.querySelector('#image-viewer-body img');
+  if (!img) return;
+  img.style.transformOrigin = 'center center';
+  img.style.transform = `translate(${mobileImgPanX}px,${mobileImgPanY}px) scale(${mobileImgScale})`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────────────────────────
+const LOADING_ZONES_TEMPLATE = {
+  'Cap':       { color: '#fff500', icon: 'Cap.png',     zones: { 'Orange': {}, 'Paragoomba': {}, 'Frog': {}, 'Rolling On': {} } },
+  'Cascade':   { color: '#ff9900', icon: 'Cascade.png', zones: { 'Dino': {}, '2D': {}, 'Chain Chomp': {}, 'Swings': {}, 'Windy': {} } },
+  'Sand':      { color: '#8bf12c', icon: 'Sand.png',    zones: { "Icy Cave": {}, "Moe-eye": {}, "Shop": {}, "Employees": {}, "Slots": {}, "Rumble": {}, "Outfit": {}, "Jaxi Ruins": {}, "Bullet Bill": {}, "Gushen": {}, "Sphynx": {}, "Moving Platform": {}, "Rocket": {}, "Colossal Ruins": {} } },
+  'Lake':      { color: '#e46cab', icon: 'Lake.png',    zones: { "Poison Waves": {}, "Zipper": {}, "Grab Climb": {}, "Shop": {}, "Puzzle": {} } },
+  'Wooded':    { color: '#1e65e7', icon: 'Wooded.png',  zones: { "DW Odyssey": {}, "DW Red Maze": {}, "DW Pond": {}, "DW Treasure": {}, "DW Outfit": {}, "Rocket": {}, "Sheep": {}, "Tank": {}, "Vine Clouds": {}, "Breakdown": {}, "Invisible": {}, "Flooded Pipes": {}, "Flower Road": {}, "Treasure Room": {} } },
+  'Lost':      { color: '#e71edd', icon: 'Lost.png',    zones: { 'Wiggler': {}, 'Shop': {}, 'Klepto': {} } },
+  'Metro':     { color: '#de7d5e', icon: 'Metro.png',   zones: { "Yellow Shop": {}, "Purple Shop": {}, "Dino": {}, "Bullet Billding": {}, "Taxi": {}, "Notes": {}, "2D": {}, "Slots": {}, "People": {}, "Outfit": {}, "Rocket": {}, "Dark": {}, "Scaffolding": {}, "Scooter": {}, "Rotating Maze": {}, "RC Car": {} } },
+  'Snow':      { color: '#e7930a', icon: 'Snow.png',    zones: { "Puzzle": {}, "Capless": {}, "Rocket Flower": {}, "Iceburn Circuit": {}, "Flower Road": {}, "Tracewalking": {}, "Clouds": {}, "Outfit": {}, "Shop": {} } },
+  'Seaside':   { color: '#b36fe9', icon: 'Seaside.png', zones: { "Well Enter": {}, "Well Exit": {}, "Rumble": {}, "Rocket": {}, "Outfit": {}, "Gushen": {}, "Sphynx": {}, "Pokio": {}, "Lava Rising": {}, "Sandy Bottom": {}, "Spinning Maze": {} } },
+  'Luncheon':  { color: '#3fddbb', icon: 'Luncheon.png',zones: { "Magma Swamp": {}, "Forks": {}, "Cheese Rocks": {}, "Veggie Room": {}, "Slots": {}, "Shop": {}, "Outfit": {}, "Spinning Athletics": {}, "Lava Islands": {}, "Volcano Cave": {}, "Gears": {}, "Magma Path": {} } },
+  'Ruined':    { color: '#ffd7e2', icon: 'Ruin.png',    zones: { "Chargin' Chuck": {}, 'Rocket': {} } },
+  "Bowser's":  { color: '#d3304c', icon: 'Bowser.png',  zones: { "Jizo": {}, "Shop": {}, "Outfit": {}, "Treasure Room": {}, "Spinning Tower": {}, "Vine Clouds": {}, "Hexagon Tower": {}, "Wooden Tower": {} } },
+  'Mushroom':  { color: '#fff672', icon: 'Star.png',    zones: { "Shop": {}, "Castle Door": {}, "Outfit": {}, "Cloud Sea": {}, "Well": {}, "Knucklotec": {}, "Torkdrift": {}, "Mechawiggler": {}, "Octopus": {}, "Cookatiel": {}, "Dragon": {}, "Rocket": {} } },
+  'Darkside':  { color: '#fff2c6', icon: 'Dark.png',    zones: { 'Breakdown': {}, 'Invisible': {}, 'Vanishing': {}, 'Yoshi Siege': {}, 'Lava Rising': {}, 'Magma Swamp': {} } },
+  'Darkerside':{ color: '#fff2c6', icon: 'Dark.png',    zones: { 'End': {} } },
+  'Moon':      { color: '#b5c1cb', icon: 'MoonK.png',   zones: { '2D Snowman': {}, 'Shop': {}, 'Swings': {}, 'Sphynx': {}} },
+  'Cloud':     { color: '#65ceff', icon: 'Cloud.png',   zones: { '2D Cube': {}, 'Picture Match': {} } },
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Painting tracker (optional section, toggled in Settings, default off)
+// A single "Paintings" section placed before Cascade in the grid. Each entry
+// is one kingdom's painting. Paintings only connect to other paintings, may
+// fan out to several, and their chains are drawn with white arrows, listed at
+// the top of the Display panel with no letters.
+// ─────────────────────────────────────────────────────────────────
+const PAINTINGS_KEY = 'Paintings';
+const PAINTING_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
+
+/** Synthetic section template for the Paintings cluster. */
+function paintingsSectionTemplate() {
+  const zones = {};
+  PAINTING_KINGDOMS.forEach(k => { zones[k] = {}; });
+  return { color: '#e6e6ee', icon: 'Painting.png', zones };
+}
+
+/** Returns {color, icon, zones} for any section key (real kingdom or Paintings). */
+function sectionTemplate(key) {
+  return key === PAINTINGS_KEY ? paintingsSectionTemplate() : LOADING_ZONES_TEMPLATE[key];
+}
+
+/** True if a node id belongs to the Paintings section. */
+function isPaintingNode(id) {
+  return typeof id === 'string' && (id === `kingdom:${PAINTINGS_KEY}` || id.startsWith(`zone:${PAINTINGS_KEY}:`));
+}
+
+/** True if a node id is a kingdom (main stage) node rather than a zone. */
+function isKingdomNode(id) {
+  return typeof id === 'string' && id.startsWith('kingdom:');
+}
+
+/**
+ * True if a node is eligible for in/out segments at all. Paintings and kingdom
+ * nodes are never split: arrows meet them anywhere along their border.
+ */
+function canSegment(id) {
+  return !isPaintingNode(id) && !isKingdomNode(id);
+}
+
+/** True if a chain id is a painting chain (any of its edges is a painting edge). */
+function isPaintingChain(cid) {
+  if (cid === undefined || cid === null) return false;
+  for (const [key, c] of Object.entries(edgeChains)) {
+    if (c === cid) {
+      const arrowPos = key.indexOf('→');
+      if (arrowPos !== -1) return isPaintingNode(key.substring(0, arrowPos));
+    }
+  }
+  return false;
+}
+
+const DEAD_END_IDS = new Set([
+  ['Cascade','Dino'],['Sand','Shop'],['Sand','Employees'],['Sand','Slots'],['Sand','Rumble'],
+  ['Sand','Outfit'],['Sand','Sphynx'],['Sand','Colossal Ruins'],['Lake','Zipper'],
+  ['Lake','Shop'],['Lake','Puzzle'],['Wooded','DW Treasure'],['Wooded','DW Outfit'],
+  ['Wooded','Sheep'],['Wooded','Vine Clouds'],['Wooded','Breakdown'],['Lost','Shop'],
+  ['Lost','Klepto'],['Metro','Yellow Shop'],['Metro','Purple Shop'],['Metro','Notes'],
+  ['Metro','2D'],['Metro','Slots'],['Metro','Dark'],['Metro','Rotating Maze'],['Metro','RC Car'],
+  ['Snow','Puzzle'],['Snow','Iceburn Circuit'],['Snow','Tracewalking'],['Snow','Clouds'],
+  ['Snow','Outfit'],['Snow','Shop'],['Seaside','Rumble'],['Seaside','Outfit'],
+  ['Seaside','Sphynx'],['Seaside','Sandy Bottom'],['Seaside','Spinning Maze'],
+  ['Luncheon','Cheese Rocks'],['Luncheon','Veggie Room'],['Luncheon','Slots'],['Luncheon','Shop'],
+  ["Bowser's",'Shop'],["Bowser's",'Outfit'],["Bowser's",'Treasure Room'],["Bowser's",'Vine Clouds'],
+  ["Bowser's",'Hexagon Tower'],['Mushroom','Shop'],['Mushroom','Castle Door'],['Mushroom','Outfit'],
+  ['Mushroom','Cloud Sea'],['Mushroom','Well'],['Mushroom','Knucklotec'],['Mushroom','Torkdrift'],
+  ['Mushroom','Mechawiggler'],['Mushroom','Octopus'],['Mushroom','Cookatiel'],['Mushroom','Dragon'],
+  ['Mushroom','Rocket'],['Darkside','Breakdown'],['Darkerside','End'],['Cloud','2D Cube'],['Cloud','Picture Match'],
+  ['Moon','Shop'],['Moon','Sphynx']
+].map(([k,z]) => `zone:${k}:${z}`));
+
+// ─────────────────────────────────────────────────────────────────
+// Zone → screenshot image mapping
+// Base URL: https://raw.githubusercontent.com/Amethyst-szs/smo-thumbnail-database/main/high/
+// Filenames follow internal SMO stage names (.jpg)
+// null = no image found (TODO)
+// ─────────────────────────────────────────────────────────────────
+const BASE_IMG = 'https://raw.githubusercontent.com/Amethyst-szs/smo-thumbnail-database/main/high/';
+
+const ZONE_IMAGES = {
+  // Kingdoms (main stages)
+  'kingdom:Cap':        'CapWorldHomeStage.jpg',
+  'kingdom:Cascade':    'WaterfallWorldHomeStage.jpg',
+  'kingdom:Sand':       'SandWorldHomeStage.jpg',
+  'kingdom:Lake':       'LakeWorldHomeStage.jpg',
+  'kingdom:Wooded':     'ForestWorldHomeStage_1.jpg',
+  'kingdom:Lost':       'ClashWorldHomeStage.jpg',
+  'kingdom:Metro':      'CityWorldHomeStage.jpg',
+  'kingdom:Snow':       'SnowWorldHomeStage.jpg',
+  'kingdom:Seaside':    'SeaWorldHomeStage.jpg',
+  'kingdom:Luncheon':   'LavaWorldHomeStage.jpg',
+  'kingdom:Ruined':     'BossRaidWorldHomeStage.jpg',
+  "kingdom:Bowser's":   'SkyWorldHomeStage.jpg',
+  'kingdom:Mushroom':   'PeachWorldHomeStage.jpg',
+  'kingdom:Darkside':   'Special1WorldHomeStage.jpg',
+  'kingdom:Darkerside': 'Special2WorldHomeStage.jpg',
+  'kingdom:Moon':       'MoonWorldHomeStage_2.jpg',
+  'kingdom:Cloud':      'CloudWorldHomeStage.jpg',
+
+  // Cap zones
+  'zone:Cap:Orange':       'PushBlockExStage.jpg',
+  'zone:Cap:Paragoomba':   'PoisonWaveExStage.jpg',
+  'zone:Cap:Frog':         'FrogSearchExStage.jpg',
+  'zone:Cap:Rolling On':   'RollingExStage.jpg',
+
+  // Cascade zones
+  'zone:Cascade:Dino':       'TrexPoppunExStage.jpg',
+  'zone:Cascade:2D':         'Lift2DExStage.jpg',
+  'zone:Cascade:Chain Chomp':'WanwanClashExStage.jpg',
+  'zone:Cascade:Swings':     'CapAppearExStage.jpg',
+  'zone:Cascade:Windy':      'WindBlowExStage.jpg',
+
+  // Sand zones
+  'zone:Sand:Icy Cave':       'SandWorldPressExStage.jpg',
+  'zone:Sand:Moe-eye':        'SandWorldMeganeExStage.jpg',
+  'zone:Sand:Shop':           'SandWorldShopStage.jpg',
+  'zone:Sand:Employees':      'SandWorldShopStage.jpg',
+  'zone:Sand:Slots':          'SandWorldSlotStage.jpg',
+  'zone:Sand:Rumble':         'SandWorldVibrationStage.jpg',
+  'zone:Sand:Outfit':         'SandWorldCostumeStage.jpg',
+  'zone:Sand:Jaxi Ruins':     'SandWorldSphinxExStage.jpg',
+  'zone:Sand:Bullet Bill':    'SandWorldKillerExStage.jpg',
+  'zone:Sand:Gushen':         'WaterTubeExStage.jpg',
+  'zone:Sand:Sphynx':         'SandWorldSecretStage.jpg',
+  'zone:Sand:Moving Platform':'MeganeLiftExStage.jpg',
+  'zone:Sand:Rocket':         'SandWorldRotateExStage.jpg',
+  'zone:Sand:Colossal Ruins': 'RocketFlowerExStage.jpg',
+
+  // Lake zones
+  'zone:Lake:Poison Waves':  'FrogPoisonExStage.jpg',
+  'zone:Lake:Zipper':        'FastenerExStage.jpg',
+  'zone:Lake:Grab Climb':    'TrampolineWallCatchExStage.jpg',
+  'zone:Lake:Shop':          'LakeWorldShopStage.jpg',
+  'zone:Lake:Puzzle':        'GotogotonExStage.jpg',
+
+  // Wooded zones
+  'zone:Wooded:DW Odyssey':   'ForestWorldHomeStage_6.jpg',
+  'zone:Wooded:DW Red Maze':  'ForestWorldWoodsStage.jpg',
+  'zone:Wooded:DW Pond':      'ForestWorldHomeStage_3.jpg',
+  'zone:Wooded:DW Treasure':  'ForestWorldWoodsTreasureStage.jpg',
+  'zone:Wooded:DW Outfit':    'ForestWorldWoodsCostumeStage.jpg',
+  'zone:Wooded:Rocket':       'FogMountainExStage.jpg',
+  'zone:Wooded:Sheep':        'AnimalChaseExStage.jpg',
+  'zone:Wooded:Tank':         'ShootingElevatorExStage.jpg',
+  'zone:Wooded:Vine Clouds':  'ForestWorldCloudBonusExStage.jpg',
+  'zone:Wooded:Breakdown':    'KillerRoadExStage.jpg',
+  'zone:Wooded:Invisible':    'PackunPoisonExStage.jpg',
+  'zone:Wooded:Flooded Pipes':'ForestWorldWaterExStage.jpg',
+  'zone:Wooded:Flower Road':  'RailCollisionExStage.jpg',
+  'zone:Wooded:Treasure Room':'ForestWorldBonusStage.jpg',
+
+  // Lost zones
+  'zone:Lost:Wiggler':  'ImomuPoisonExStage.jpg',
+  'zone:Lost:Shop':     'ClashWorldShopStage.jpg',
+  'zone:Lost:Klepto':   'JangoExStage.jpg',
+
+  // Metro zones
+  'zone:Metro:Yellow Shop':    'CityWorldShop01Stage.jpg',
+  'zone:Metro:Purple Shop':    'CityWorldShop01Stage.jpg',
+  'zone:Metro:Dino':           'TrexBikeExStage.jpg',
+  'zone:Metro:Bullet Billding':'PoleKillerExStage.jpg',
+  'zone:Metro:Taxi':           'ShootingCityExStage.jpg',
+  'zone:Metro:Notes':          'Note2D3DRoomExStage.jpg',
+  'zone:Metro:2D':             'Theater2DExStage.jpg',
+  'zone:Metro:Slots':          'CityWorldSandSlotStage.jpg',
+  'zone:Metro:People':         'CityPeopleRoadStage.jpg',
+  'zone:Metro:Outfit':         'ElectricWireExStage.jpg',
+  'zone:Metro:Rocket':         'PoleGrabCeilExStage.jpg',
+  'zone:Metro:Dark':           'DonsukeExStage.jpg',
+  'zone:Metro:Scaffolding':    'SwingSteelExStage.jpg',
+  'zone:Metro:Scooter':        'BikeSteelExStage.jpg',
+  'zone:Metro:Rotating Maze':  'CapRotatePackunExStage.jpg',
+  'zone:Metro:RC Car':         'RadioControlExStage.jpg',
+
+  // Snow zones
+  'zone:Snow:Puzzle':        'ByugoPuzzleExStage.jpg',
+  'zone:Snow:Capless':       'IceWaterBlockExStage.jpg',
+  'zone:Snow:Rocket Flower': 'IceWaterDashExStage.jpg',
+  'zone:Snow:Iceburn':       'SnowWorldLobby001Stage.jpg',
+  'zone:Snow:Flower Road':   'KillerRailCollisionExStage.jpg',
+  'zone:Snow:Tracewalking':  'IceWalkerExStage.jpg',
+  'zone:Snow:Clouds':        'SnowWorldCloudBonusExStage.jpg',
+  'zone:Snow:Outfit':        'SnowWorldCostumeStage.jpg',
+  'zone:Snow:Shop':          'SnowWorldShopStage.jpg',
+
+  // Seaside zones
+  'zone:Seaside:Well Enter':     'SeaWorldUtsuboCaveStage.jpg',
+  'zone:Seaside:Well Exit':      'SeaWorldHomeStage.jpg',
+  'zone:Seaside:Rumble':         'SeaWorldVibrationStage.jpg',
+  'zone:Seaside:Rocket':         'CloudExStage.jpg',
+  'zone:Seaside:Outfit':         'SeaWorldCostumeStage.jpg',
+  'zone:Seaside:Gushen':         'WaterValleyExStage.jpg',
+  'zone:Seaside:Sphynx':         'SeaWorldSecretStage.jpg',
+  'zone:Seaside:Pokio':          'ReflectBombExStage.jpg',
+  'zone:Seaside:Lava Rising':    'SenobiTowerExStage.jpg',
+  'zone:Seaside:Sandy Bottom':   'SeaWorldSneakingManStage.jpg', 
+  'zone:Seaside:Spinning Maze':  'TogezoRotateExStage.jpg',
+
+  // Luncheon zones
+  'zone:Luncheon:Magma Swamp':       'LavaWorldUpDownExStage.jpg',
+  'zone:Luncheon:Forks':             'ForkExStage.jpg',
+  'zone:Luncheon:Cheese Rocks':      'LavaWorldExcavationExStage.jpg',
+  'zone:Luncheon:Veggie Room':       'LavaWorldTreasureStage.jpg',
+  'zone:Luncheon:Slots':             'LavaBonus1Zone.jpg',
+  'zone:Luncheon:Shop':              'LavaWorldShopStage.jpg',
+  'zone:Luncheon:Outfit':            'LavaWorldCostumeStage.jpg',
+  'zone:Luncheon:Spinning Athletics':'LavaWorldClockExStage.jpg',
+  'zone:Luncheon:Lava Islands':      'LavaWorldFenceLiftExStage.jpg',
+  'zone:Luncheon:Volcano Cave':      'CapAppearLavaLiftExStage.jpg',
+  'zone:Luncheon:Gears':             'GabuzouClockExStage.jpg',
+  'zone:Luncheon:Magma Path':        'LavaWorldBubbleLaneExStage.jpg',
+
+  // Ruined zones
+  "zone:Ruined:Chargin' Chuck": 'BullRunExStage.jpg',
+  'zone:Ruined:Rocket':         'DotTowerExStage.jpg',
+
+  // Bowser's zones
+  "zone:Bowser's:Jizo":          'JizoSwitchExStage.jpg',
+  "zone:Bowser's:Shop":          'SkyWorldShopStage.jpg',
+  "zone:Bowser's:Outfit":        'SkyWorldCostumeStage.jpg',
+  "zone:Bowser's:Treasure Room": 'SkyWorldTreasureStage.jpg',
+  "zone:Bowser's:Spinning Tower":'TsukkunRotateExStage.jpg',
+  "zone:Bowser's:Vine Clouds":   'SkyWorldCloudBonusExStage.jpg',
+  "zone:Bowser's:Hexagon Tower": 'KaronWingTowerStage.jpg',
+  "zone:Bowser's:Wooden Tower":  'TsukkunClimbExStage.jpg',
+
+  // Mushroom zones
+  'zone:Mushroom:Shop':        'PeachWorldShopStage.jpg',
+  'zone:Mushroom:Castle Door': 'PeachWorldCastleStage.jpg',
+  'zone:Mushroom:Outfit':      'PeachWorldCostumeStage.jpg',
+  'zone:Mushroom:Cloud Sea':   'YoshiCloudExStage.jpg',
+  'zone:Mushroom:Well':        'DotHardExStage.jpg',
+  'zone:Mushroom:Knucklotec':  'RevengeBossKnuckleStage.jpg',
+  'zone:Mushroom:Torkdrift':   'RevengeForestBossStage.jpg',
+  'zone:Mushroom:Mechawiggler':'high/RevengeMofumofuStage.jpg',
+  'zone:Mushroom:Octopus':     'high/RevengeGiantWanderBossStage.jpg',
+  'zone:Mushroom:Cookatiel':   'RevengeBossMagmaStage.jpg',
+  'zone:Mushroom:Dragon':      'high/RevengeBossRaidStage.jpg',
+  'zone:Mushroom:Rocket':      'FukuwaraiMarioStage.jpg',
+
+  // Darkside zones
+  'zone:Darkside:Breakdown':  'KillerRoadNoCapExStage.jpg',
+  'zone:Darkside:Invisible':  'PackunPoisonNoCapExStage.jpg',
+  'zone:Darkside:Vanishing':  'BikeSteelNoCapExStage.jpg',
+  'zone:Darkside:Yoshi Siege':  'ShootingCityYoshiExStage.jpg',
+  'zone:Darkside:Lava Rising':  'LavaWorldUpDownYoshiExStage.jpg',
+  'zone:Darkside:Magma Swamp':  'LavaWorldUpDownYoshiExStage.jpg',
+
+  // Darkerside zones
+  'zone:Darkerside:End': 'Special2WorldHomeStage.jpg',
+
+  //Moon zones
+  'zone:Moon:2D Snowman':  'Galaxy2DExStage.jpg',
+  'zone:Moon:Shop':        'MoonWorldShopRoom.jpg',
+  'zone:Moon:Swings':      'MoonAthleticExStage.jpg',
+  'zone:Moon:Sphynx':      'MoonWorldSphinxRoom.jpg',
+
+  //Cloud zones
+  'zone:Cloud:2D Cube':        'Cube2DExStage.jpg',
+  'zone:Cloud:Picture Match':  'FukuwaraiKuriboStage.jpg',
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Chain color palette
+// ─────────────────────────────────────────────────────────────────
+const CHAIN_COLORS = [
+  '#ff6b6b','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff',
+  '#00d2ff','#ff8c69','#b5e550','#f7a8d8','#ff4757','#2ed573',
+  '#1e90ff','#eccc68','#ff6348','#7bed9f','#70a1ff','#a29bfe',
+  '#fd79a8','#00b894','#0984e3','#e17055','#6c5ce7','#fdcb6e',
+  '#55efc4','#fab1a0','#74b9ff','#b2bec3',
+];
+
+function getChainLabel(i) {
+  if (i < 26) return String.fromCharCode(65 + i);
+  const i2 = i - 26;
+  return String.fromCharCode(65 + Math.floor(i2 / 26)) + String.fromCharCode(65 + (i2 % 26));
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Storage keys
+// ─────────────────────────────────────────────────────────────────
+const STORAGE_KEY         = 'smo_map_state';
+const STORAGE_POSITIONS   = 'smo_map_positions';
+const STORAGE_SIZES       = 'smo_map_sizes';
+const STORAGE_GRID        = 'smo_map_grid';
+const STORAGE_SETTINGS    = 'smo_map_settings';
+const STORAGE_EDGE_CHAINS = 'smo_edge_chains';
+const STORAGE_CHAIN_META  = 'smo_chain_meta';
+const STORAGE_NOTES       = 'smo_map_notes';
+const STORAGE_NODE_POS    = 'smo_map_node_positions';
+
+// ─────────────────────────────────────────────────────────────────
+// Zone name overrides (from the main tracker's tracker_state)
+// ─────────────────────────────────────────────────────────────────
+// The tracker/notes let users rename loading zones; those custom names live in
+// tracker_state.settings.zone_names ({ kingdom: { defaultZoneKey: name } }). The
+// map reads them so renamed zones show here too. Cached per render for speed and
+// refreshed whenever tracker_state changes (see the storage listener in init).
+const TRACKER_STATE_KEY = 'tracker_state';
+let _zoneNameCache = {};
+
+function refreshZoneNameCache() {
+  try {
+    const raw = localStorage.getItem(TRACKER_STATE_KEY);
+    _zoneNameCache = raw ? (JSON.parse(raw)?.settings?.zone_names || {}) : {};
+  } catch (e) { _zoneNameCache = {}; }
+}
+
+// Display label for a node: zones use their custom name when one is set; kingdom
+// nodes (and unset zones) keep their default label.
+function zoneDisplayLabel(n) {
+  if (!n) return '';
+  if (n.type === 'zone') {
+    const byK = _zoneNameCache[n.kingdomKey];
+    const custom = byK && byK[n.label];
+    if (custom && String(custom).trim()) return custom;
+  }
+  return n.label;
+}
+
+function zoneNamesSignature() {
+  try {
+    const raw = localStorage.getItem(TRACKER_STATE_KEY);
+    const zn = raw ? (JSON.parse(raw)?.settings?.zone_names || {}) : {};
+    return JSON.stringify(zn);
+  } catch (e) { return '{}'; }
+}
+let _zoneNamesSig = '{}';
+
+// ─────────────────────────────────────────────────────────────────
+// Layout constants
+// ─────────────────────────────────────────────────────────────────
+const ZONE_COLS_DEFAULT = 3;
+const NODE_W = 124, NODE_H = 30;
+const ZONE_GAP_X = 8, ZONE_GAP_Y = 7;
+const CLUSTER_PAD = 14;
+const CLUSTER_GAP_X = 46, CLUSTER_GAP_Y = 46;
+const KINGDOM_NODE_W = 150, KINGDOM_NODE_H = 36;
+const CLUSTER_MIN_W = 140;
+
+// ─────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────
+let nodes = {};
+let canvasW = 2000, canvasH = 1400;
+
+// Connection / mark state
+// edgeList is the source of truth for arrows. Each entry records not just which
+// nodes it joins but which PART of each node it attaches to ('in' = entrance
+// segment, 'out' = exit segment, 'mid' = the label in between). Two nodes may
+// therefore carry several arrows as long as each uses a different pair of parts.
+// outgoing/incoming are node-level views derived from it, used by the dead-end
+// rules, chain tracing and highlighting.
+let edgeList = [];   // [{ src, sPart, tgt, tPart }]
+let outgoing = {}, incoming = {}, marks = {};
+
+// Per-cluster overrides (keyed by kingdomKey)
+let clusterPositions = {};  // {x, y} absolute canvas positions for each cluster
+let clusterSizes = {};      // {w} user-set width for each cluster
+
+// Grid setting
+let gridRows = 4, gridCols = 4;
+
+// App settings
+let showImages = false;
+let arrowColor = '#7c87f5';
+let highlightColor = '#0afbff';
+let highlightEnabled = true;
+let randomChainColors = true; // legacy, kept for old-save migration only
+let arrowColorMode = 'random'; // 'random' | 'one' | 'gradient'
+let displayPosition = 'top';
+let displaySize = 150;
+let paintingTracker = false; // Painting section shown on the map (default off)
+
+// ── Segmented nodes ───────────────────────────────────────────────
+// When on, every non-painting node is split into an entrance segment (left) and
+// an exit segment (right). Arrows leave the middle of the source's right edge
+// and enter the middle of the target's left edge, with a short horizontal stub
+// at each end so the arrowhead always meets the node square-on.
+let segmentedNodes = false;
+let segmentStyle   = 'inout'; // 'inout' | 'enterexit' | 'tofrom'
+const SEGMENT_LABELS = {
+  inout:     { in: 'in',    out: 'out'  },
+  enterexit: { in: 'enter', out: 'exit' },
+  tofrom:    { in: 'to',    out: 'from' },
+};
+const SEG_STUB = 16;      // horizontal shaft length at each end
+const SEG_STUB_BACK = 28; // longer stub when the target sits left of the source
+const SELF_LOOP_DROP = 40; // how far a mid-to-in self-loop dips below its node
+
+// ── Decouple ──────────────────────────────────────────────────────
+// When on, kingdom panels are hidden and every node can be dragged freely by the
+// triangle in its bottom-right corner. Positions persist while it stays on;
+// turning it off discards them and restores the grouped 4-column grid.
+let decoupled = false;
+let nodePositions = {};   // id → {x, y}, only used while decoupled
+
+// Kingdom visibility (which kingdoms are shown on the map). Missing = visible.
+let kingdomVisible = { Moon: false, Cloud: false };
+
+/** Section keys that should currently be rendered on the map, in order.
+ *  When the painting tracker is on, the Paintings section is placed first
+ *  (before Cascade) so it leads the grid when clearing / arranging. */
+function visibleKingdomKeys() {
+  const keys = Object.keys(LOADING_ZONES_TEMPLATE).filter(k => kingdomVisible[k] !== false);
+  return paintingTracker ? [PAINTINGS_KEY, ...keys] : keys;
+}
+
+// Chain state
+let edgeChains = {};      // "src→tgt" → chainId (integer)
+let chainColors = {};     // chainId → hex color string
+let nextChainId = 0;
+let chainLabelMap = {};   // chainId → "A","B",... (recomputed)
+
+// Chain-highlight interaction state (chain-ID based)
+let hoverHighlightChainId  = null;
+let pinnedHighlightChainId = null;
+// Node-click highlight: highlights every chain passing through a node, each in
+// its own chain color (multi-color). Independent of the single-chain highlight.
+let pinnedHighlightNodeId  = null;
+
+// Chain picker state
+let activePickerEdge = null;
+let activePickerEl   = null;
+
+// ── Freeform notes ────────────────────────────────────────────────
+// Sticky notes drawn on top of the canvas (above arrows). Positions/sizes are in
+// canvas coordinates so they pan and zoom with everything else. Saved separately
+// (STORAGE_NOTES) and wiped by the Clear button. A note's text may embed {icon}
+// tokens ({icon} = Moon.png, {icon:File.png} = a chosen icon) that render as a
+// clickable image linked to an icon picker.
+let mapNotes = [];          // [{ id, x, y, w, text }]
+let nextNoteId = 1;
+const NOTE_DEFAULT_W = 150; // canvas px
+const NOTE_MIN_W = 70;
+// Icons offered by the note {icon} picker (must exist under assets/).
+const NOTE_PICKER_ICONS = [
+  'Moon.png', 'Moon_Dark.png', 'checkmark.png', 'xmark.png',
+  'Cascade.png', 'Sand.png', 'Lake.png', 'Wooded.png', 'Lost.png', 'Metro.png',
+  'Snow.png', 'Seaside.png', 'Luncheon.png', 'Ruin.png', 'Bowser.png',
+  'Cap.png', 'Dark.png', 'Star.png', 'Cloud.png', 'MoonK.png',
+];
+
+// ─────────────────────────────────────────────────────────────────
+// Cluster geometry helpers
+// ─────────────────────────────────────────────────────────────────
+
+/** Compute effective zone column count from cluster width */
+function zoneCols(clusterW) {
+  const innerW = clusterW - CLUSTER_PAD * 2;
+  const cols = Math.max(1, Math.floor((innerW + ZONE_GAP_X) / (NODE_W + ZONE_GAP_X)));
+  return cols;
+}
+
+/** Compute cluster height from its width and number of zones */
+function clusterHeight(clusterW, numZones) {
+  const cols = zoneCols(clusterW);
+  const rows = Math.ceil(numZones / cols);
+  return KINGDOM_NODE_H + 10 + rows * NODE_H + Math.max(0, rows - 1) * ZONE_GAP_Y + CLUSTER_PAD * 2;
+}
+
+/** Default cluster width = 3 zone columns */
+function defaultClusterWidth() {
+  return ZONE_COLS_DEFAULT * NODE_W + (ZONE_COLS_DEFAULT - 1) * ZONE_GAP_X + CLUSTER_PAD * 2;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Layout builder
+// ─────────────────────────────────────────────────────────────────
+function buildLayout() {
+  nodes = {};
+  const kingdomKeys = visibleKingdomKeys();
+  const numKingdoms = kingdomKeys.length;
+
+  // Determine grid dimensions
+  const cols = gridCols;
+  const rows = gridRows;
+
+  // Compute per-cluster widths and cluster boxes
+  // Start with stored positions if available, else compute from grid
+  let x = 0, y = 0;
+  let col = 0, row = 0;
+  let rowHeights = {}; // row index -> max cluster height in that row
+
+  // First pass: compute heights per row (needed for y offsets)
+  kingdomKeys.forEach((key, idx) => {
+    const r = Math.floor(idx / cols);
+    const w = clusterSizes[key]?.w ?? defaultClusterWidth();
+    const autoH = clusterHeight(w, Object.keys(sectionTemplate(key).zones).length);
+    const h = Math.max(autoH, clusterSizes[key]?.h ?? autoH);
+    rowHeights[r] = Math.max(rowHeights[r] || 0, h);
+  });
+
+  // Compute cumulative row y-offsets
+  const rowYOffsets = {};
+  let accY = 0;
+  for (let r = 0; r <= rows; r++) {
+    rowYOffsets[r] = accY;
+    accY += (rowHeights[r] || 0) + CLUSTER_GAP_Y;
+  }
+
+  // Compute per-column widths for grid x-offsets
+  const colWidths = {};
+  kingdomKeys.forEach((key, idx) => {
+    const c = idx % cols;
+    const w = clusterSizes[key]?.w ?? defaultClusterWidth();
+    colWidths[c] = Math.max(colWidths[c] || 0, w);
+  });
+  const colXOffsets = {};
+  let accX = 0;
+  for (let c = 0; c < cols; c++) {
+    colXOffsets[c] = accX;
+    accX += (colWidths[c] || defaultClusterWidth()) + CLUSTER_GAP_X;
+  }
+
+  let maxRight = 0, maxBottom = 0;
+
+  kingdomKeys.forEach((key, idx) => {
+    const data = sectionTemplate(key);
+    const isPaintings = key === PAINTINGS_KEY;
+    const zoneNames = Object.keys(data.zones);
+    const cw = clusterSizes[key]?.w ?? defaultClusterWidth();
+    const autoH = clusterHeight(cw, zoneNames.length);
+    const ch = Math.max(autoH, clusterSizes[key]?.h ?? autoH);
+    const zc = zoneCols(cw);
+
+    // Position: use stored if available, else compute from grid
+    let cx, cy;
+    if (clusterPositions[key]) {
+      cx = clusterPositions[key].x;
+      cy = clusterPositions[key].y;
+    } else {
+      const gridC = idx % cols;
+      const gridR = Math.floor(idx / cols);
+      cx = colXOffsets[gridC] ?? 0;
+      cy = rowYOffsets[gridR] ?? 0;
+    }
+
+    maxRight = Math.max(maxRight, cx + cw);
+    maxBottom = Math.max(maxBottom, cy + ch);
+
+    // Kingdom node (header)
+    const kingdomId = `kingdom:${key}`;
+    nodes[kingdomId] = {
+      id: kingdomId, label: key, kingdomKey: key, type: 'kingdom',
+      // Position within cluster
+      localX: cx + CLUSTER_PAD + (cw - CLUSTER_PAD * 2) / 2 - KINGDOM_NODE_W / 2,
+      localY: cy + CLUSTER_PAD,
+      x: cx + CLUSTER_PAD + (cw - CLUSTER_PAD * 2) / 2 - KINGDOM_NODE_W / 2,
+      y: cy + CLUSTER_PAD,
+      w: KINGDOM_NODE_W, h: KINGDOM_NODE_H,
+      color: data.color, icon: data.icon,
+      clusterX: cx, clusterY: cy, clusterW: cw, clusterH: ch,
+    };
+
+    // Zone nodes
+    zoneNames.forEach((zone, i) => {
+      const r = Math.floor(i / zc);
+      const c = i % zc;
+      const zoneId = `zone:${key}:${zone}`;
+      // Painting entries are named after kingdoms, so tint them with that
+      // kingdom's own color for quick identification.
+      const zoneColor = isPaintings
+        ? (LOADING_ZONES_TEMPLATE[zone]?.color || data.color)
+        : data.color;
+      nodes[zoneId] = {
+        id: zoneId, label: zone, kingdomKey: key, type: 'zone',
+        painting: isPaintings,
+        x: cx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X),
+        y: cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y),
+        w: NODE_W, h: NODE_H, color: zoneColor,
+        clusterX: cx, clusterY: cy,
+      };
+    });
+  });
+
+  if (decoupled) {
+    // Free layout: start from the grid-derived positions, then apply any saved
+    // per-node overrides. Canvas bounds come from the nodes themselves since
+    // there are no cluster panels to measure.
+    let mr = 0, mb = 0;
+    Object.values(nodes).forEach(n => {
+      const p = nodePositions[n.id];
+      if (p && isFinite(p.x) && isFinite(p.y)) { n.x = p.x; n.y = p.y; }
+      mr = Math.max(mr, n.x + n.w);
+      mb = Math.max(mb, n.y + n.h);
+    });
+    canvasW = mr + 120;
+    canvasH = mb + 120;
+    return;
+  }
+
+  canvasW = maxRight + 80;
+  canvasH = maxBottom + 80;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Persistence
+// ─────────────────────────────────────────────────────────────────
+/**
+ * Normalizes a stored outgoing map into { id: [tgt, tgt, ...] } form.
+ * Transparently migrates maps saved by older single-output versions,
+ * where each value was a single target id string instead of an array.
+ */
+function normalizeEdgeMap(raw) {
+  const out = {};
+  for (const [k, v] of Object.entries(raw || {})) {
+    if (Array.isArray(v)) {
+      out[k] = [...new Set(v)];
+    } else if (v) {
+      out[k] = [v];
+    }
+  }
+  return out;
+}
+
+/** Rebuilds the incoming map from outgoing so the two are always consistent. */
+function rebuildIncoming() {
+  incoming = {};
+  for (const [src, tgts] of Object.entries(outgoing)) {
+    tgts.forEach(tgt => {
+      if (!incoming[tgt]) incoming[tgt] = [];
+      if (!incoming[tgt].includes(src)) incoming[tgt].push(src);
+    });
+  }
+}
+
+function loadAll() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      outgoing = normalizeEdgeMap(d.outgoing);
+      marks = d.marks || {};
+      if (Array.isArray(d.edgeList) && d.edgeList.length) {
+        edgeList = d.edgeList
+          .filter(e => e && e.src && e.tgt)
+          .map(e => ({ src: e.src, tgt: e.tgt,
+                       sPart: e.sPart || PART_OUT, tPart: e.tPart || PART_IN }));
+      } else {
+        // Migrate: every arrow saved before segments existed was exit → entrance.
+        edgeList = [];
+        for (const [src, tgts] of Object.entries(outgoing)) {
+          tgts.forEach(tgt => edgeList.push({ src, sPart: PART_OUT, tgt, tPart: PART_IN }));
+        }
+      }
+      rebuildAdjacency();
+    }
+  } catch (e) { console.error('State load failed:', e); }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_POSITIONS);
+    if (raw) clusterPositions = JSON.parse(raw);
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_SIZES);
+    if (raw) clusterSizes = JSON.parse(raw);
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_GRID);
+    if (raw) {
+      const g = JSON.parse(raw);
+      gridRows = g.rows || 4;
+      gridCols = g.cols || 4;
+    }
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_SETTINGS);
+    if (raw) {
+      const s = JSON.parse(raw);
+      showImages        = !!s.showImages;
+      arrowColor        = s.arrowColor || arrowColor;
+      highlightColor    = s.highlightColor || highlightColor;
+      highlightEnabled  = s.highlightEnabled !== undefined ? !!s.highlightEnabled : highlightEnabled;
+      if (s.arrowColorMode) {
+        arrowColorMode = s.arrowColorMode;
+      } else if (s.randomChainColors !== undefined) {
+        // Migrate from legacy boolean setting
+        arrowColorMode = s.randomChainColors ? 'random' : 'gradient';
+      }
+      randomChainColors = arrowColorMode === 'random';
+      displayPosition   = s.displayPosition || displayPosition;
+      displaySize       = s.displaySize     || displaySize;
+      paintingTracker   = !!s.paintingTracker;
+      segmentedNodes    = !!s.segmentedNodes;
+      if (s.segmentStyle && SEGMENT_LABELS[s.segmentStyle]) segmentStyle = s.segmentStyle;
+      decoupled         = !!s.decoupled;
+      if (s.kingdomVisible) kingdomVisible = { ...kingdomVisible, ...s.kingdomVisible };
+    }
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_NODE_POS);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object') nodePositions = p;
+    }
+  } catch (e) {}
+  // Positions only ever apply while decoupled; drop them if it was left off.
+  if (!decoupled) nodePositions = {};
+
+  try {
+    const raw = localStorage.getItem(STORAGE_EDGE_CHAINS);
+    if (raw) edgeChains = JSON.parse(raw);
+    // Rewrite legacy node-pair keys into port-qualified ones.
+    const migrated = {};
+    for (const [k, cid] of Object.entries(edgeChains)) {
+      const pk = parseEkey(k);
+      migrated[pk ? ekey(pk.src, pk.sPart, pk.tgt, pk.tPart) : k] = cid;
+    }
+    edgeChains = migrated;
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_CHAIN_META);
+    if (raw) {
+      const m = JSON.parse(raw);
+      nextChainId  = m.nextChainId || 0;
+      chainColors  = m.colors || {};
+    }
+  } catch (e) {}
+
+  try {
+    const raw = localStorage.getItem(STORAGE_NOTES);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        mapNotes = arr.filter(n => n && typeof n === 'object');
+        nextNoteId = mapNotes.reduce((mx, n) => Math.max(mx, (n.id || 0) + 1), 1);
+      }
+    }
+  } catch (e) {}
+}
+
+function saveState()    { localStorage.setItem(STORAGE_KEY, JSON.stringify({ outgoing, marks, edgeList })); }
+function savePositions(){ localStorage.setItem(STORAGE_POSITIONS, JSON.stringify(clusterPositions)); }
+function saveSizes()    { localStorage.setItem(STORAGE_SIZES, JSON.stringify(clusterSizes)); }
+function saveGrid()     { localStorage.setItem(STORAGE_GRID, JSON.stringify({ rows: gridRows, cols: gridCols })); }
+function saveSettings() {
+  localStorage.setItem(STORAGE_SETTINGS, JSON.stringify({
+    showImages, arrowColor, highlightColor, highlightEnabled,
+    randomChainColors, arrowColorMode, displayPosition, displaySize, kingdomVisible,
+    paintingTracker, segmentedNodes, segmentStyle, decoupled
+  }));
+}
+function saveNodePositions() {
+  localStorage.setItem(STORAGE_NODE_POS, JSON.stringify(nodePositions));
+}
+function clearNodePositions() {
+  nodePositions = {};
+  localStorage.removeItem(STORAGE_NODE_POS);
+}
+/** Snapshot every node's current position so decoupled dragging starts stable. */
+function snapshotNodePositions() {
+  nodePositions = {};
+  Object.values(nodes).forEach(n => { nodePositions[n.id] = { x: n.x, y: n.y }; });
+  saveNodePositions();
+}
+function saveEdgeChains() {
+  localStorage.setItem(STORAGE_EDGE_CHAINS, JSON.stringify(edgeChains));
+  localStorage.setItem(STORAGE_CHAIN_META, JSON.stringify({ nextChainId, colors: chainColors }));
+}
+function saveNotes() { localStorage.setItem(STORAGE_NOTES, JSON.stringify(mapNotes)); }
+
+// ─────────────────────────────────────────────────────────────────
+// Connection helpers
+// ─────────────────────────────────────────────────────────────────
+const PART_IN = 'in', PART_MID = 'mid', PART_OUT = 'out';
+
+/** Stable string id for an arrow, including the parts it attaches to. */
+function ekey(src, sPart, tgt, tPart) { return `${src}@${sPart}→${tgt}@${tPart}`; }
+function edgeKeyOf(e) { return ekey(e.src, e.sPart, e.tgt, e.tPart); }
+
+/** Parses an edge key. Legacy keys ("src→tgt") are read as exit → entrance. */
+function parseEkey(k) {
+  const p = k.indexOf('→');
+  if (p === -1) return null;
+  const L = k.slice(0, p), R = k.slice(p + 1);
+  const li = L.lastIndexOf('@'), ri = R.lastIndexOf('@');
+  return {
+    src:   li === -1 ? L : L.slice(0, li),
+    sPart: li === -1 ? PART_OUT : L.slice(li + 1),
+    tgt:   ri === -1 ? R : R.slice(0, ri),
+    tPart: ri === -1 ? PART_IN  : R.slice(ri + 1),
+  };
+}
+
+function findEdge(src, sPart, tgt, tPart) {
+  return edgeList.find(e => e.src === src && e.sPart === sPart &&
+                            e.tgt === tgt && e.tPart === tPart);
+}
+
+/** Rebuilds the node-level outgoing/incoming views from edgeList. */
+function rebuildAdjacency() {
+  outgoing = {}; incoming = {};
+  edgeList.forEach(e => { addEdge(outgoing, e.src, e.tgt); addEdge(incoming, e.tgt, e.src); });
+}
+
+/** Paintings, kingdoms and unsegmented nodes have no segments: only 'mid'. */
+function normalizePart(id, part) {
+  if (!canSegment(id)) return PART_MID;
+  if (part === PART_IN)  return PART_IN;
+  if (part === PART_OUT) return DEAD_END_IDS.has(id) ? PART_MID : PART_OUT;
+  return PART_MID;
+}
+
+function addEdge(map, key, val) {
+  if (!map[key]) map[key] = [];
+  if (!map[key].includes(val)) map[key].push(val);
+}
+function removeEdge(map, key, val) {
+  if (!map[key]) return;
+  map[key] = map[key].filter(v => v !== val);
+  if (map[key].length === 0) delete map[key];
+}
+
+/** True if an arrow from src's sPart to tgt's tPart is allowed. */
+function canConnect(src, sPart, tgt, tPart) {
+  if (!nodes[src] || !nodes[tgt]) return false;
+  if (src === tgt) {
+    // Self-loops are only allowed from the mid (name) segment back into the
+    // node's own entrance -- e.g. "Rolling On" looping back into itself. The
+    // exit segment never needs this, and unsegmented nodes have no 'in'/'mid'
+    // distinction to loop between.
+    if (!segmentedNodes || !canSegment(src)) return false;
+    if (sPart !== PART_MID || tPart !== PART_IN) return false;
+  }
+  // Only that exact pair of parts is taken \u2014 other part pairings are free.
+  if (findEdge(src, sPart, tgt, tPart)) return false;
+  // Paintings only connect to paintings (and vice-versa). Painting nodes are
+  // never dead-ends, so a painting may fan out to / in from multiple paintings.
+  if (isPaintingNode(src) !== isPaintingNode(tgt)) return false;
+  // A dead-end node cannot RECEIVE more than one arrow, on any part.
+  // It can always send arrows regardless of whether it has incoming ones.
+  if (DEAD_END_IDS.has(tgt) && edgeList.some(e => e.tgt === tgt)) return false;
+  return true;
+}
+
+function connect(src, sPart, tgt, tPart) {
+  sPart = normalizePart(src, sPart);
+  tPart = normalizePart(tgt, tPart);
+  if (!canConnect(src, sPart, tgt, tPart)) {
+    flashRejected(src);
+    return;
+  }
+  const ed = { src, sPart, tgt, tPart };
+  edgeList.push(ed);
+  rebuildAdjacency();
+  autoAssignChain(ed);
+  saveState();
+  saveEdgeChains();
+  renderConnections();
+  renderDisplayPanel();
+}
+
+/** Removes ALL outgoing arrows from a node (used by double-click). */
+function disconnectOutgoing(id) {
+  edgeList.filter(e => e.src === id).forEach(e => { delete edgeChains[edgeKeyOf(e)]; });
+  edgeList = edgeList.filter(e => e.src !== id);
+  rebuildAdjacency();
+  // Clear stale highlights
+  hoverHighlightChainId  = null;
+  pinnedHighlightChainId = null;
+  pinnedHighlightNodeId  = null;
+  recomputeChainLabels();
+}
+/** Removes ALL incoming arrows into a node. */
+function disconnectIncoming(id) {
+  edgeList.filter(e => e.tgt === id).forEach(e => { delete edgeChains[edgeKeyOf(e)]; });
+  edgeList = edgeList.filter(e => e.tgt !== id);
+  rebuildAdjacency();
+  hoverHighlightChainId  = null;
+  pinnedHighlightChainId = null;
+  pinnedHighlightNodeId  = null;
+  recomputeChainLabels();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Chain management
+// ─────────────────────────────────────────────────────────────────
+function recomputeChainLabels() {
+  // Which chains are painting chains (drawn white, never lettered)?
+  const paintingChainIds = new Set();
+  for (const [key, cid] of Object.entries(edgeChains)) {
+    const pk = parseEkey(key);
+    if (pk && isPaintingNode(pk.src)) paintingChainIds.add(cid);
+  }
+  const sortedIds = [...new Set(Object.values(edgeChains))]
+    .filter(id => !paintingChainIds.has(id))
+    .sort((a, b) => a - b);
+  chainLabelMap = {};
+  sortedIds.forEach((id, idx) => { chainLabelMap[id] = getChainLabel(idx); });
+}
+
+// Color used for chain "letters" (display panel badges, picker badges,
+// hover tooltip). Only meaningful when Random Color mode is active
+// otherwise letters are plain white, since there's no per-chain color.
+function chainLetterColor(chainId) {
+  if (arrowColorMode !== 'random') return '#ffffff';
+  return (chainId !== undefined && chainColors[chainId]) ? chainColors[chainId] : arrowColor;
+}
+
+function pickChainColor() {
+  const used = new Set(Object.values(chainColors));
+  const avail = CHAIN_COLORS.filter(c => !used.has(c));
+  return avail.length > 0
+    ? avail[Math.floor(Math.random() * avail.length)]
+    : CHAIN_COLORS[Math.floor(Math.random() * CHAIN_COLORS.length)];
+}
+
+function createNewChain() {
+  const id = nextChainId++;
+  chainColors[id] = pickChainColor();
+  return id;
+}
+
+function assignChain(ed, chainId) {
+  edgeChains[edgeKeyOf(ed)] = chainId;
+  recomputeChainLabels();
+}
+
+function assignNewChain(ed) {
+  const id = createNewChain();
+  edgeChains[edgeKeyOf(ed)] = id;
+  recomputeChainLabels();
+  return id;
+}
+
+function getEdgeChainId(ed) {
+  return edgeChains[edgeKeyOf(ed)];
+}
+
+function getIncomingChainIds(nodeId) {
+  const ids = [], seen = new Set();
+  edgeList.filter(e => e.tgt === nodeId).forEach(e => {
+    const cid = edgeChains[edgeKeyOf(e)];
+    if (cid !== undefined && !seen.has(cid)) { seen.add(cid); ids.push(cid); }
+  });
+  return ids;
+}
+
+/** Can the picker be shown for an outgoing arrow FROM src? */
+function canOpenChainPicker(src) {
+  if (DEAD_END_IDS.has(src)) return false;
+  if ((incoming[src] || []).length === 0) return false;
+  return true;
+}
+
+/** Auto-assign a chain to a newly created edge. */
+function autoAssignChain(ed) {
+  if ((incoming[ed.src] || []).length === 0 || DEAD_END_IDS.has(ed.src)) {
+    assignNewChain(ed);
+  } else {
+    const inChains = getIncomingChainIds(ed.src);
+    if (inChains.length > 0) assignChain(ed, inChains[0]);
+    else assignNewChain(ed);
+  }
+}
+
+/** Migrate old state that has edges but no chain assignments. */
+function migrateOldEdgeChains() {
+  const missing = edgeList.filter(e => edgeChains[edgeKeyOf(e)] === undefined);
+  if (missing.length === 0) return;
+
+  // Use existing computeChains() to seed assignments
+  const chains = computeChains();
+  chains.forEach(chain => {
+    const cid = nextChainId++;
+    chainColors[cid] = pickChainColor();
+    for (let i = 0; i < chain.ids.length - 1; i++) {
+      edgeList
+        .filter(e => e.src === chain.ids[i] && e.tgt === chain.ids[i + 1])
+        .forEach(e => {
+          const k = edgeKeyOf(e);
+          if (edgeChains[k] === undefined) edgeChains[k] = cid;
+        });
+    }
+  });
+  // Catch any remaining unassigned edges
+  edgeList.forEach(e => {
+    const k = edgeKeyOf(e);
+    if (edgeChains[k] === undefined) {
+      const cid = nextChainId++;
+      chainColors[cid] = pickChainColor();
+      edgeChains[k] = cid;
+    }
+  });
+  recomputeChainLabels();
+  saveEdgeChains();
+}
+
+/**
+ * Double-click an arrow to remove just that one connection. The chain is split
+ * at that point: the upstream side keeps the original chain, and the downstream
+ * side (after the break) becomes a brand-new chain. The rest stays intact.
+ */
+function breakChainAtEdge(ed) {
+  const key = edgeKeyOf(ed);
+  const src = ed.src;
+  const cid = edgeChains[key];
+
+  // Remove only this edge
+  edgeList = edgeList.filter(e => edgeKeyOf(e) !== key);
+  rebuildAdjacency();
+  delete edgeChains[key];
+
+  if (cid !== undefined) {
+    // Remaining edges that still belong to this chain
+    const edges = [];
+    for (const [k, c] of Object.entries(edgeChains)) {
+      if (c !== cid) continue;
+      const pk = parseEkey(k);
+      if (!pk) continue;
+      edges.push({ key: k, a: pk.src, b: pk.tgt });
+    }
+
+    // Union-find the weakly-connected pieces of what's left of the chain.
+    const parent = {};
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    const union = (x, y) => { parent[find(x)] = find(y); };
+    edges.forEach(({ a, b }) => { if (!(a in parent)) parent[a] = a; if (!(b in parent)) parent[b] = b; });
+    edges.forEach(({ a, b }) => union(a, b));
+
+    const comps = new Map(); // component root -> [edgeKeys]
+    edges.forEach(({ key: k, a }) => {
+      const r = find(a);
+      if (!comps.has(r)) comps.set(r, []);
+      comps.get(r).push(k);
+    });
+
+    // If the break actually separated the chain into 2+ pieces, keep the
+    // original chain on the upstream piece (the one containing src) and give
+    // every other piece (downstream) a fresh chain id.
+    if (comps.size > 1) {
+      const srcRoot = (src in parent) ? find(src) : null;
+      const keepRoot = (srcRoot && comps.has(srcRoot)) ? srcRoot : comps.keys().next().value;
+      for (const [root, keys] of comps) {
+        if (root === keepRoot) continue;
+        const newId = createNewChain();
+        keys.forEach(k => { edgeChains[k] = newId; });
+      }
+    }
+  }
+
+  hoverHighlightChainId  = null;
+  pinnedHighlightChainId = null;
+  pinnedHighlightNodeId  = null;
+  recomputeChainLabels();
+  saveState();
+  saveEdgeChains();
+  renderConnections();
+  renderDisplayPanel();
+}
+
+/** Brief red flash on a node to signal a rejected connection attempt. */
+function flashRejected(id) {
+  const el = canvasEl.querySelector(`.map-node[data-id="${cssEscape(id)}"]`);
+  if (!el) return;
+  el.classList.add('connect-rejected');
+  setTimeout(() => el.classList.remove('connect-rejected'), 350);
+}
+
+function toggleMark(id, color) {
+  marks[id] = (marks[id] === color) ? null : color;
+  if (!marks[id]) delete marks[id];
+  saveState();
+  applyMarkClass(id);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DOM refs
+// ─────────────────────────────────────────────────────────────────
+const viewport   = document.getElementById('viewport');
+const canvasEl   = document.getElementById('canvas');
+const linesLayer = document.getElementById('lines-layer');
+const imageViewer= document.getElementById('image-viewer');
+const imgTitle   = document.getElementById('image-viewer-title');
+const imgBody    = document.getElementById('image-viewer-body');
+
+// ─────────────────────────────────────────────────────────────────
+// Full re-render
+// ─────────────────────────────────────────────────────────────────
+function fullRender() {
+  refreshZoneNameCache();
+  // Remove all existing cluster-bgs and nodes (keep SVG)
+  canvasEl.querySelectorAll('.cluster-bg, .map-node').forEach(el => el.remove());
+  buildLayout();
+  canvasEl.style.width = canvasW + 'px';
+  canvasEl.style.height = canvasH + 'px';
+  renderClusters();
+  renderNodes();
+  renderConnections();
+  renderDisplayPanel();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Cluster backgrounds + resize handles
+// ─────────────────────────────────────────────────────────────────
+function renderClusters() {
+  // Decoupled: no kingdom groups and no borders nodes float on their own.
+  if (decoupled) return;
+  const kingdomKeys = visibleKingdomKeys();
+  kingdomKeys.forEach(key => {
+    const kn = nodes[`kingdom:${key}`];
+    if (!kn) return;
+    const cx = kn.clusterX, cy = kn.clusterY;
+    const cw = kn.clusterW, ch = kn.clusterH;
+
+    const div = document.createElement('div');
+    div.className = 'cluster-bg';
+    div.dataset.kingdom = key;
+    div.style.left = cx + 'px';
+    div.style.top  = cy + 'px';
+    div.style.width = cw + 'px';
+    div.style.height = ch + 'px';
+
+    // Resize handle (width – bottom-right)
+    const handle = document.createElement('div');
+    handle.className = 'cluster-resize-handle';
+    div.appendChild(handle);
+
+    canvasEl.insertBefore(div, linesLayer);
+    wireClusterDrag(div, key);
+    wireClusterResize(handle, key);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Cluster drag (move entire cluster)
+// ─────────────────────────────────────────────────────────────────
+let activeClusDrag = null;
+let activeMobileCluster = null; // Mobile: key of the currently selected (tap-activated) cluster
+
+function wireClusterDrag(div, key) {
+  div.addEventListener('mousedown', (e) => {
+    // Only drag on the background itself or kingdom header (not zone nodes, not resize handle)
+    if (e.button !== 0) return;
+    const target = e.target;
+    if (target.classList.contains('cluster-resize-handle')) return;
+    if (target.classList.contains('map-node') && !target.classList.contains('kingdom-node')) return;
+    if (connecting) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const kn = nodes[`kingdom:${key}`];
+    const startCx = kn.clusterX, startCy = kn.clusterY;
+    const startMx = e.clientX, startMy = e.clientY;
+
+    activeClusDrag = { key, startCx, startCy, startMx, startMy };
+    div.classList.add('dragging-cluster');
+    viewport.classList.add('cluster-dragging');
+
+    function onMove(ev) {
+      if (!activeClusDrag) return;
+      const dx = (ev.clientX - startMx) / zoom;
+      const dy = (ev.clientY - startMy) / zoom;
+      const nx = Math.max(0, startCx + dx);
+      const ny = Math.max(0, startCy + dy);
+      moveCluster(key, nx, ny, div);
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      div.classList.remove('dragging-cluster');
+      viewport.classList.remove('cluster-dragging');
+      if (activeClusDrag) {
+        clusterPositions[key] = { x: nodes[`kingdom:${key}`].clusterX, y: nodes[`kingdom:${key}`].clusterY };
+        savePositions();
+        activeClusDrag = null;
+        // Update canvas bounds
+        updateCanvasBounds();
+      }
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // ── Mobile: tap once to activate panel, then drag to move it ─────
+  div.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    // Ignore touches on the resize handle (it has its own handler)
+    if (e.target.classList.contains('cluster-resize-handle')) return;
+
+    e.preventDefault(); e.stopPropagation();
+
+    if (activeMobileCluster !== key) {
+      // Deactivate any previously active cluster
+      if (activeMobileCluster) {
+        const prevDiv = canvasEl.querySelector(`.cluster-bg[data-kingdom="${activeMobileCluster}"]`);
+        if (prevDiv) prevDiv.classList.remove('mobile-active');
+      }
+      // First tap: activate this cluster (shows accent border)
+      activeMobileCluster = key;
+      div.classList.add('mobile-active');
+      return; // don't start a drag yet
+    }
+
+    // Second+ touch on an already-active panel: start dragging
+    const t = e.touches[0];
+    const kn = nodes[`kingdom:${key}`];
+    const startCx = kn.clusterX, startCy = kn.clusterY;
+    const startMx = t.clientX, startMy = t.clientY;
+    let hasMoved = false;
+
+    div.classList.add('dragging-cluster');
+    viewport.classList.add('cluster-dragging');
+
+    function onTouchMove(ev) {
+      if (ev.touches.length !== 1) return;
+      ev.preventDefault();
+      hasMoved = true;
+      const tc = ev.touches[0];
+      const dx = (tc.clientX - startMx) / zoom;
+      const dy = (tc.clientY - startMy) / zoom;
+      moveCluster(key, Math.max(0, startCx + dx), Math.max(0, startCy + dy), div);
+    }
+
+    function onTouchEnd() {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      div.classList.remove('dragging-cluster');
+      viewport.classList.remove('cluster-dragging');
+      if (hasMoved) {
+        // Persist new position and auto-deactivate after a completed drag
+        clusterPositions[key] = { x: nodes[`kingdom:${key}`].clusterX, y: nodes[`kingdom:${key}`].clusterY };
+        savePositions();
+        updateCanvasBounds();
+        div.classList.remove('mobile-active');
+        activeMobileCluster = null;
+      }
+      // If no movement (accidental tap on an active panel) keep it active
+    }
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchEnd);
+  }, { passive: false });
+}
+
+function moveCluster(key, nx, ny, div) {
+  const data = sectionTemplate(key);
+  const zoneNames = Object.keys(data.zones);
+  const cw = clusterSizes[key]?.w ?? defaultClusterWidth();
+  const autoH = clusterHeight(cw, zoneNames.length);
+  const ch = Math.max(autoH, clusterSizes[key]?.h ?? autoH);
+  const zc = zoneCols(cw);
+
+  // Update cluster bg element
+  if (div) {
+    div.style.left = nx + 'px';
+    div.style.top  = ny + 'px';
+  }
+
+  // Update kingdom node
+  const kingdomId = `kingdom:${key}`;
+  const kn = nodes[kingdomId];
+  kn.clusterX = nx; kn.clusterY = ny; kn.clusterH = ch; kn.clusterW = cw;
+  kn.x = nx + CLUSTER_PAD + (cw - CLUSTER_PAD * 2) / 2 - KINGDOM_NODE_W / 2;
+  kn.y = ny + CLUSTER_PAD;
+  const knEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape(kingdomId)}"]`);
+  if (knEl) { knEl.style.left = kn.x + 'px'; knEl.style.top = kn.y + 'px'; }
+
+  // Update zone nodes
+  zoneNames.forEach((zone, i) => {
+    const r = Math.floor(i / zc);
+    const c = i % zc;
+    const zid = `zone:${key}:${zone}`;
+    const zn = nodes[zid];
+    if (!zn) return;
+    zn.clusterX = nx; zn.clusterY = ny;
+    zn.x = nx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X);
+    zn.y = ny + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y);
+    const znEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape(zid)}"]`);
+    if (znEl) { znEl.style.left = zn.x + 'px'; znEl.style.top = zn.y + 'px'; }
+  });
+
+  renderConnections();
+}
+
+function updateCanvasBounds() {
+  let maxRight = 0, maxBottom = 0;
+  if (decoupled) {
+    Object.values(nodes).forEach(n => {
+      maxRight  = Math.max(maxRight,  n.x + n.w);
+      maxBottom = Math.max(maxBottom, n.y + n.h);
+    });
+    canvasW = maxRight + 120; canvasH = maxBottom + 120;
+    canvasEl.style.width = canvasW + 'px';
+    canvasEl.style.height = canvasH + 'px';
+    return;
+  }
+  Object.values(nodes).forEach(n => {
+    if (n.type === 'kingdom') {
+      maxRight = Math.max(maxRight, n.clusterX + n.clusterW);
+      maxBottom = Math.max(maxBottom, n.clusterY + n.clusterH);
+    }
+  });
+  canvasW = maxRight + 80; canvasH = maxBottom + 80;
+  canvasEl.style.width = canvasW + 'px';
+  canvasEl.style.height = canvasH + 'px';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Cluster resize
+// ─────────────────────────────────────────────────────────────────
+function wireClusterResize(handle, key) {
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const kn = nodes[`kingdom:${key}`];
+    const startW = clusterSizes[key]?.w ?? defaultClusterWidth();
+    const startMx = e.clientX;
+
+    function onMove(ev) {
+      const dw = (ev.clientX - startMx) / zoom;
+      const newW = Math.max(CLUSTER_MIN_W, startW + dw);
+      clusterSizes[key] = { w: newW };
+      resizeCluster(key, newW);
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      saveSizes();
+      updateCanvasBounds();
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // ── Mobile: touch-drag the triangle handle to resize ─────────────
+  handle.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault(); e.stopPropagation();
+
+    const startW = clusterSizes[key]?.w ?? defaultClusterWidth();
+    const startMx = e.touches[0].clientX;
+
+    function onTouchMove(ev) {
+      if (ev.touches.length !== 1) return;
+      ev.preventDefault();
+      const dw = (ev.touches[0].clientX - startMx) / zoom;
+      const newW = Math.max(CLUSTER_MIN_W, startW + dw);
+      clusterSizes[key] = { w: newW };
+      resizeCluster(key, newW);
+    }
+
+    function onTouchEnd() {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      saveSizes();
+      updateCanvasBounds();
+    }
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchEnd);
+  }, { passive: false });
+}
+
+function resizeCluster(key, newW) {
+  const data = sectionTemplate(key);
+  const zoneNames = Object.keys(data.zones);
+  const zc = zoneCols(newW);
+  const autoH = clusterHeight(newW, zoneNames.length);
+  const newH = Math.max(autoH, clusterSizes[key]?.h ?? autoH);
+
+  const kn = nodes[`kingdom:${key}`];
+  const cx = kn.clusterX, cy = kn.clusterY;
+
+  // Update cluster bg DOM
+  const div = canvasEl.querySelector(`.cluster-bg[data-kingdom="${key}"]`);
+  if (div) { div.style.width = newW + 'px'; div.style.height = newH + 'px'; }
+
+  // Update kingdom header node
+  kn.clusterW = newW; kn.clusterH = newH;
+  kn.x = cx + CLUSTER_PAD + (newW - CLUSTER_PAD * 2) / 2 - KINGDOM_NODE_W / 2;
+  const knEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape('kingdom:' + key)}"]`);
+  if (knEl) knEl.style.left = kn.x + 'px';
+
+  // Update zone nodes
+  zoneNames.forEach((zone, i) => {
+    const r = Math.floor(i / zc);
+    const c = i % zc;
+    const zid = `zone:${key}:${zone}`;
+    const zn = nodes[zid];
+    if (!zn) return;
+    zn.x = cx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X);
+    zn.y = cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y);
+    const znEl = canvasEl.querySelector(`.map-node[data-id="${cssEscape(zid)}"]`);
+    if (znEl) { znEl.style.left = zn.x + 'px'; znEl.style.top = zn.y + 'px'; }
+  });
+
+  renderConnections();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Grid reflow
+// ─────────────────────────────────────────────────────────────────
+function applyGrid(rows, cols) {
+  gridRows = Math.max(1, Math.min(15, rows));
+  gridCols = Math.max(1, Math.min(15, cols));
+  // Clear stored positions and sizes so layout is recalculated from grid at default panel size
+  clusterPositions = {};
+  clusterSizes = {};
+  saveGrid();
+  savePositions();
+  saveSizes();
+  fullRender();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Node rendering
+// ─────────────────────────────────────────────────────────────────
+function renderNodes() {
+  Object.values(nodes).forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'map-node' + (n.type === 'kingdom' ? ' kingdom-node' : '');
+    if (DEAD_END_IDS.has(n.id)) el.classList.add('dead-end');
+    el.dataset.id = n.id;
+    el.style.left = n.x + 'px';
+    el.style.top  = n.y + 'px';
+    el.style.width  = n.w + 'px';
+    el.style.height = n.h + 'px';
+    el.style.borderColor = n.type === 'zone' ? hexWithAlpha(n.color, 0.5) : n.color;
+
+    if (n.type === 'kingdom' && n.icon) {
+      const img = document.createElement('img');
+      img.src = `assets/${n.icon}`;
+      img.alt = '';
+      el.appendChild(img);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'node-label';
+    label.textContent = zoneDisplayLabel(n);
+    label.style.color = n.type === 'zone' ? n.color : 'var(--text)';
+
+    // ── Segments ────────────────────────────────────────────────
+    // Paintings are deliberately left alone. Dead ends get an entrance
+    // segment only arrows may still leave them, they just have no exit box.
+    if (nodeIsSegmented(n.id)) {
+      el.classList.add('segmented');
+      const words = SEGMENT_LABELS[segmentStyle] || SEGMENT_LABELS.inout;
+      const segColor = n.type === 'zone' ? n.color : 'var(--text)';
+      const divider  = n.type === 'zone' ? hexWithAlpha(n.color, 0.45) : 'var(--border)';
+
+      const segIn = document.createElement('span');
+      segIn.className = 'node-seg node-seg-in';
+      segIn.textContent = words.in;
+      segIn.style.color = segColor;
+      segIn.style.borderColor = divider;
+      el.appendChild(segIn);
+
+      el.appendChild(label);
+
+      if (!DEAD_END_IDS.has(n.id)) {
+        const segOut = document.createElement('span');
+        segOut.className = 'node-seg node-seg-out';
+        segOut.textContent = words.out;
+        segOut.style.color = segColor;
+        segOut.style.borderColor = divider;
+        el.appendChild(segOut);
+      }
+    } else {
+      el.appendChild(label);
+    }
+
+    // ── Decouple move handle ────────────────────────────────────
+    if (decoupled) {
+      const mh = document.createElement('div');
+      mh.className = 'node-move-handle';
+      mh.title = 'Drag to move this node';
+      el.appendChild(mh);
+      wireNodeMove(mh, el, n.id);
+    }
+
+    canvasEl.appendChild(el);
+    wireNodeEvents(el, n.id);
+    applyMarkClass(n.id);
+  });
+}
+
+/** True when this node should render (and anchor arrows at) in/out segments. */
+function nodeIsSegmented(id) {
+  return segmentedNodes && canSegment(id);
+}
+
+function hexWithAlpha(hex, alpha) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function applyMarkClass(id) {
+  const el = canvasEl.querySelector(`.map-node[data-id="${cssEscape(id)}"]`);
+  if (!el) return;
+  el.classList.remove('mark-green','mark-red');
+  if (marks[id] === 'green') el.classList.add('mark-green');
+  if (marks[id] === 'red')   el.classList.add('mark-red');
+}
+
+function cssEscape(s) { return s.replace(/[:.]/g,'\\$&'); }
+
+// ─────────────────────────────────────────────────────────────────
+// Connection drawing
+// ─────────────────────────────────────────────────────────────────
+function nodeCenter(id) {
+  const n = nodes[id];
+  return { x: n.x + n.w/2, y: n.y + n.h/2 };
+}
+
+function edgePoint(node, fromX, fromY) {
+  const cx = node.x + node.w/2, cy = node.y + node.h/2;
+  const halfW = node.w/2, halfH = node.h/2;
+  const dx = cx-fromX, dy = cy-fromY;
+  if (dx===0 && dy===0) return {x:cx,y:cy};
+  const tx = dx!==0 ? halfW/Math.abs(dx) : Infinity;
+  const ty = dy!==0 ? halfH/Math.abs(dy) : Infinity;
+  const t = Math.min(tx,ty);
+  return {x:cx-dx*t, y:cy-dy*t};
+}
+
+/**
+ * Anchor for one end of an arrow.
+ *   'in'  → middle of the left edge,  shaft sticks out to the LEFT
+ *   'out' → middle of the right edge, shaft sticks out to the RIGHT
+ *   'mid' → no fixed anchor; the arrow meets the node's border wherever it
+ *           happens to arrive, with no horizontal shaft.
+ * The shaft always points outward from the node, whichever end it is.
+ */
+function partAnchor(id, part) {
+  const n = nodes[id];
+  if (!n || !canSegment(id)) return null;
+  if (part === PART_IN)  return { p: { x: n.x,        y: n.y + n.h / 2 }, dir: -1 };
+  if (part === PART_OUT) return { p: { x: n.x + n.w,  y: n.y + n.h / 2 }, dir:  1 };
+  return null;
+}
+
+/**
+ * True when this edge may use segment anchors. Each end is still checked
+ * separately by partAnchor, so a zone→kingdom arrow can leave a zone's exit
+ * box and still meet the kingdom's border wherever it arrives.
+ */
+function edgeUsesSegments(ed) {
+  return segmentedNodes;
+}
+
+/**
+ * Builds the point list for an arrow. Ends attached to an 'in' or 'out' segment
+ * get a short horizontal shaft; a 'mid' end just meets the border directly, so
+ * the arrow can land anywhere along the node's edge.
+ */
+function edgePathPoints(ed) {
+  const useSeg = edgeUsesSegments(ed);
+
+  // Self-loop: leaves the bottom of the mid segment, dips below the node,
+  // then comes back up into the 'in' segment's usual stub + anchor.
+  if (ed.src === ed.tgt) {
+    const n = nodes[ed.src];
+    const tA = partAnchor(ed.tgt, PART_IN);
+    if (n && tA) {
+      const dropX = n.x + n.w * 0.55;
+      const stubP = { x: tA.p.x + tA.dir * SEG_STUB, y: tA.p.y };
+      return [
+        { x: dropX, y: n.y + n.h },
+        { x: dropX, y: n.y + n.h + SELF_LOOP_DROP },
+        stubP,
+        tA.p
+      ];
+    }
+    return [nodeCenter(ed.src), nodeCenter(ed.src)];
+  }
+
+  const sA = useSeg ? partAnchor(ed.src, ed.sPart) : null;
+  const tA = useSeg ? partAnchor(ed.tgt, ed.tPart) : null;
+
+  if (!sA && !tA) {
+    const p1 = nodeCenter(ed.src);
+    return [p1, edgePoint(nodes[ed.tgt], p1.x, p1.y)];
+  }
+
+  // Doubling-back arrows (exit on the right heading to an entrance further
+  // left) get longer shafts so the turn reads clearly instead of overlapping.
+  let stub = SEG_STUB;
+  if (sA && tA && sA.dir > 0 && tA.dir < 0 && (tA.p.x - sA.p.x) < SEG_STUB * 2 + 12) {
+    stub = SEG_STUB_BACK;
+  }
+
+  const pts = [];
+  const tRef = tA ? { x: tA.p.x + tA.dir * stub, y: tA.p.y } : nodeCenter(ed.tgt);
+  if (sA) pts.push(sA.p, { x: sA.p.x + sA.dir * stub, y: sA.p.y });
+  else    pts.push(edgePoint(nodes[ed.src], tRef.x, tRef.y));
+
+  const last = pts[pts.length - 1];
+  if (tA) pts.push(tRef, tA.p);
+  else    pts.push(edgePoint(nodes[ed.tgt], last.x, last.y));
+
+  return pts;
+}
+
+/** Where a drag from a given part of a node should start. */
+function dragOrigin(id, part) {
+  const a = (segmentedNodes && canSegment(id)) ? partAnchor(id, part) : null;
+  return a ? a.p : nodeCenter(id);
+}
+
+function pointsAttr(pts) {
+  return pts.map(p => `${p.x},${p.y}`).join(' ');
+}
+
+let previewLine = null;
+
+// ── SVG marker / gradient helpers ───────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function makeMarker(id, color) {
+  const m = document.createElementNS(SVG_NS, 'marker');
+  m.id = id;
+  m.setAttribute('markerWidth','8'); m.setAttribute('markerHeight','8');
+  m.setAttribute('refX','6'); m.setAttribute('refY','3');
+  m.setAttribute('orient','auto');
+  const p = document.createElementNS(SVG_NS, 'path');
+  p.setAttribute('d','M0,0 L6,3 L0,6 Z'); p.setAttribute('fill', color);
+  m.appendChild(p); return m;
+}
+
+function ensureBaseMarkers(defs) {
+  if (!defs.querySelector('#arrowhead'))
+    defs.appendChild(makeMarker('arrowhead', arrowColor));
+  const hl = defs.querySelector('#arrowhead-highlight');
+  if (!hl) {
+    defs.appendChild(makeMarker('arrowhead-highlight', highlightColor));
+  } else {
+    const p = hl.querySelector('path');
+    if (p) p.setAttribute('fill', highlightColor);
+  }
+}
+
+function ensureChainMarker(defs, chainId, color) {
+  const id = chainId !== undefined ? `arrow-chain-${chainId}` : 'arrowhead';
+  if (!defs.querySelector(`#${id}`)) defs.appendChild(makeMarker(id, color));
+  return id;
+}
+
+function ensureKingdomMarker(defs, kingdom, color) {
+  const id = `arrow-k-${kingdom.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  if (!defs.querySelector(`#${id}`)) defs.appendChild(makeMarker(id, color));
+  return id;
+}
+
+// White arrowhead for painting chains (always white regardless of arrow mode).
+function ensurePaintingMarker(defs) {
+  if (!defs.querySelector('#arrow-white')) defs.appendChild(makeMarker('arrow-white', '#ffffff'));
+  return 'arrow-white';
+}
+
+// Highlight arrowhead for a specific color (used by multi-color node highlight).
+function ensureHighlightColorMarker(defs, color) {
+  const id = 'arrow-hl-' + String(color).replace(/[^a-zA-Z0-9]/g, '_');
+  if (!defs.querySelector(`#${id}`)) defs.appendChild(makeMarker(id, color));
+  return id;
+}
+
+function ensureGradient(defs, srcColor, tgtColor, p1, p2, edgeKey) {
+  const gradId = 'grad_' + String(edgeKey).replace(/[^a-zA-Z0-9]/g, '_');
+  let grad = defs.querySelector(`#${gradId}`);
+  if (!grad) {
+    grad = document.createElementNS(SVG_NS, 'linearGradient');
+    grad.id = gradId;
+    grad.setAttribute('gradientUnits','userSpaceOnUse');
+    const s1 = document.createElementNS(SVG_NS,'stop');
+    s1.setAttribute('offset','0%'); s1.setAttribute('stop-color', srcColor);
+    const s2 = document.createElementNS(SVG_NS,'stop');
+    s2.setAttribute('offset','100%'); s2.setAttribute('stop-color', tgtColor);
+    grad.appendChild(s1); grad.appendChild(s2);
+    defs.appendChild(grad);
+  }
+  grad.setAttribute('x1', p1.x); grad.setAttribute('y1', p1.y);
+  grad.setAttribute('x2', p2.x); grad.setAttribute('y2', p2.y);
+  return gradId;
+}
+
+// Arrow tooltip
+const arrowTooltipEl = document.getElementById('arrow-chain-tooltip');
+function showArrowTooltip(e, chainId) {
+  if (chainId === undefined || !chainLabelMap[chainId]) return;
+  const color = chainLetterColor(chainId);
+  arrowTooltipEl.textContent  = chainLabelMap[chainId];
+  arrowTooltipEl.style.color  = color;
+  arrowTooltipEl.style.borderColor = color;
+  arrowTooltipEl.style.display = 'block';
+  updateArrowTooltipPos(e);
+}
+function updateArrowTooltipPos(e) {
+  arrowTooltipEl.style.left = (e.clientX + 14) + 'px';
+  arrowTooltipEl.style.top  = (e.clientY - 10) + 'px';
+}
+function hideArrowTooltip() { arrowTooltipEl.style.display = 'none'; }
+
+// Chain picker
+function closeActiveChainPicker() {
+  if (activePickerEl && activePickerEl.parentNode) activePickerEl.remove();
+  activePickerEl = null; activePickerEdge = null;
+}
+
+function openChainPicker(event, ed) {
+  closeActiveChainPicker();
+  const edgeKey = edgeKeyOf(ed);
+  const currentChainId = getEdgeChainId(ed);
+  const inChains = getIncomingChainIds(ed.src);
+
+  const picker = document.createElement('div');
+  picker.className = 'chain-picker-popup';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'chain-picker-header';
+  hdr.textContent = 'Assign chain:';
+  picker.appendChild(hdr);
+
+  const badges = document.createElement('div');
+  badges.className = 'chain-picker-badges';
+
+  inChains.forEach(cid => {
+    const lbl = chainLabelMap[cid] || '?';
+    const col = chainLetterColor(cid);
+    const badge = document.createElement('div');
+    badge.className = 'chain-badge' + (cid === currentChainId ? ' chain-badge-active' : '');
+    badge.textContent = lbl;
+    badge.style.color = col; badge.style.borderColor = col;
+    if (cid === currentChainId) badge.style.backgroundColor = hexWithAlpha(col, 0.2);
+    badge.title = `Chain ${lbl}`;
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      assignChain(ed, cid);
+      saveEdgeChains();
+      closeActiveChainPicker();
+      renderConnections(); renderDisplayPanel();
+    });
+    badges.appendChild(badge);
+  });
+
+  const newBtn = document.createElement('div');
+  newBtn.className = 'chain-badge chain-badge-new';
+  newBtn.textContent = '+'; newBtn.title = 'Start a new chain';
+  newBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    assignNewChain(ed);
+    saveEdgeChains();
+    closeActiveChainPicker();
+    renderConnections(); renderDisplayPanel();
+  });
+  badges.appendChild(newBtn);
+
+  picker.appendChild(badges);
+  document.body.appendChild(picker);
+  activePickerEl = picker; activePickerEdge = edgeKey;
+
+  const pw = 240, ph = 80;
+  let x = event.clientX + 14, y = event.clientY + 14;
+  if (x + pw > window.innerWidth)  x = event.clientX - pw - 8;
+  if (y + ph > window.innerHeight) y = event.clientY - ph - 8;
+  picker.style.left = `${Math.max(8, x)}px`;
+  picker.style.top  = `${Math.max(8, y)}px`;
+
+  setTimeout(() => {
+    document.addEventListener('click', function outsideClose(e) {
+      if (!picker.contains(e.target)) {
+        closeActiveChainPicker();
+        document.removeEventListener('click', outsideClose);
+      }
+    });
+  }, 0);
+}
+
+function renderConnections() {
+  linesLayer.setAttribute('width', canvasW);
+  linesLayer.setAttribute('height', canvasH);
+  linesLayer.innerHTML = '';
+
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  linesLayer.appendChild(defs);
+  ensureBaseMarkers(defs);
+
+  edgeList.forEach(ed => {
+    {
+      const src = ed.src, tgt = ed.tgt;
+      if (!nodes[src] || !nodes[tgt]) return;
+      const key = edgeKeyOf(ed);
+      const chainId = edgeChains[key];
+      const pathPts = edgePathPoints(ed);
+      const segPts = pathPts.length > 2 ? pathPts : null;
+      const p1 = pathPts[0], p2 = pathPts[pathPts.length - 1];
+
+      let strokeVal, markerId;
+      if (isPaintingNode(src)) {
+        // Painting chains are always drawn with white arrows.
+        strokeVal = '#ffffff';
+        markerId  = ensurePaintingMarker(defs);
+      } else if (arrowColorMode === 'gradient') {
+        const srcKingdom = nodes[src].kingdomKey;
+        const tgtKingdom = nodes[tgt].kingdomKey;
+        const srcColor = LOADING_ZONES_TEMPLATE[srcKingdom]?.color || '#888';
+        const tgtColor = LOADING_ZONES_TEMPLATE[tgtKingdom]?.color || '#888';
+        const gradId = ensureGradient(defs, srcColor, tgtColor, p1, p2, key);
+        strokeVal = `url(#${gradId})`;
+        markerId  = ensureKingdomMarker(defs, tgtKingdom, tgtColor);
+      } else if (arrowColorMode === 'one') {
+        strokeVal = arrowColor;
+        markerId  = ensureChainMarker(defs, chainId, arrowColor);
+      } else {
+        const color = (chainId !== undefined && chainColors[chainId]) ? chainColors[chainId] : arrowColor;
+        strokeVal = color;
+        markerId  = ensureChainMarker(defs, chainId, color);
+      }
+
+      const line = document.createElementNS(SVG_NS, segPts ? 'polyline' : 'line');
+      if (segPts) {
+        line.setAttribute('points', pointsAttr(segPts));
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke-linejoin', 'round');
+      } else {
+        line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+        line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
+      }
+      line.setAttribute('stroke', strokeVal);
+      line.setAttribute('stroke-width', 2.5);
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('marker-end', `url(#${markerId})`);
+      line.dataset.ekey = key;
+      line.dataset.normalStroke = strokeVal;
+      line.dataset.normalMarker = `url(#${markerId})`;
+      line.classList.add('conn-line');
+      linesLayer.appendChild(line);
+
+      // Invisible wide hit target
+      const hit = document.createElementNS(SVG_NS, segPts ? 'polyline' : 'line');
+      if (segPts) {
+        hit.setAttribute('points', pointsAttr(segPts));
+        hit.setAttribute('fill', 'none');
+      } else {
+        hit.setAttribute('x1',p1.x); hit.setAttribute('y1',p1.y);
+        hit.setAttribute('x2',p2.x); hit.setAttribute('y2',p2.y);
+      }
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', 14);
+      hit.setAttribute('stroke-linecap', 'round');
+      hit.style.pointerEvents = 'stroke';
+      hit.style.cursor = 'pointer';
+      hit.dataset.ekey = key;
+      linesLayer.appendChild(hit);
+
+      hit.addEventListener('mouseenter', (e) => {
+        hoverHighlightChainId = chainId ?? null;
+        applyHighlightClasses();
+        if (chainId !== undefined) showArrowTooltip(e, chainId);
+      });
+      hit.addEventListener('mousemove', (e) => updateArrowTooltipPos(e));
+      hit.addEventListener('mouseleave', () => {
+        hoverHighlightChainId = null;
+        applyHighlightClasses();
+        hideArrowTooltip();
+      });
+      hit.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hideArrowTooltip();
+        // Defer the pin/picker action briefly so a double-click (which breaks
+        // the chain) doesn't first pin the highlight or pop the picker.
+        const ex = e.clientX, ey = e.clientY;
+        clearTimeout(hit._clickTimer);
+        hit._clickTimer = setTimeout(() => {
+          hit._clickTimer = null;
+          const cid = chainId ?? null;
+          pinnedHighlightNodeId  = null;
+          pinnedHighlightChainId = (pinnedHighlightChainId === cid) ? null : cid;
+          applyHighlightClasses();
+          if (canOpenChainPicker(src)) {
+            if (activePickerEdge === key) closeActiveChainPicker();
+            else openChainPicker({ clientX: ex, clientY: ey }, ed);
+          }
+        }, 220);
+      });
+
+      hit.addEventListener('dblclick', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        clearTimeout(hit._clickTimer); hit._clickTimer = null;
+        hideArrowTooltip();
+        closeActiveChainPicker();
+        breakChainAtEdge(ed);
+      });
+    }
+  });
+
+  if (previewLine) linesLayer.appendChild(previewLine);
+  applyHighlightClasses();
+}
+
+function drawLine(p1, p2, stroke, markerBoolOrId) {
+  const line = document.createElementNS(SVG_NS,'line');
+  line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+  line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
+  line.setAttribute('stroke', stroke);
+  line.setAttribute('stroke-width', 2.5);
+  line.setAttribute('stroke-linecap','round');
+  if (typeof markerBoolOrId === 'string')    line.setAttribute('marker-end',`url(#${markerBoolOrId})`);
+  else if (markerBoolOrId === true)          line.setAttribute('marker-end','url(#arrowhead)');
+  linesLayer.appendChild(line);
+  return line;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Chain highlighting (hover / click, synced between map and display)
+// ─────────────────────────────────────────────────────────────────
+// Single-chain highlight (used for arrow hover and pinned-arrow), one color.
+function singleChainHighlightState(cid) {
+  const edgeColors = new Map(), nodeIds = new Set(), chainIds = new Set([cid]);
+  for (const [key, c] of Object.entries(edgeChains)) {
+    if (c !== cid) continue;
+    edgeColors.set(key, highlightColor);
+    const pk = parseEkey(key);
+    if (pk) { nodeIds.add(pk.src); nodeIds.add(pk.tgt); }
+  }
+  return { edgeColors, nodeIds, chainIds };
+}
+
+// Resolve which highlight is active. Priority: hovered arrow > pinned node >
+// pinned arrow. A pinned node highlights every chain passing through it, each
+// drawn in its own chain color so overlapping chains stay distinguishable.
+function computeHighlightState() {
+  if (!highlightEnabled) return null;
+
+  if (hoverHighlightChainId != null) return singleChainHighlightState(hoverHighlightChainId);
+
+  if (pinnedHighlightNodeId != null && nodes[pinnedHighlightNodeId]) {
+    const nid = pinnedHighlightNodeId;
+    const cids = new Set();
+    edgeList.forEach(e => {
+      if (e.src !== nid && e.tgt !== nid) return;
+      const c = edgeChains[edgeKeyOf(e)];
+      if (c !== undefined) cids.add(c);
+    });
+
+    const edgeColors = new Map(), nodeIds = new Set([nid]), chainIds = new Set();
+    for (const [key, cid] of Object.entries(edgeChains)) {
+      if (!cids.has(cid)) continue;
+      edgeColors.set(key, chainColors[cid] || highlightColor);
+      const pk = parseEkey(key);
+      if (pk) { nodeIds.add(pk.src); nodeIds.add(pk.tgt); }
+      chainIds.add(cid);
+    }
+    return { edgeColors, nodeIds, chainIds };
+  }
+
+  if (pinnedHighlightChainId != null) return singleChainHighlightState(pinnedHighlightChainId);
+  return null;
+}
+
+function applyHighlightClasses() {
+  const hl = computeHighlightState();
+  const defs = linesLayer.querySelector('defs');
+  const nodeIds    = hl ? hl.nodeIds    : new Set();
+  const edgeColors = hl ? hl.edgeColors : new Map();
+  const chainIds   = hl ? hl.chainIds   : new Set();
+
+  // Keep the single highlight arrowhead marker in sync with the highlight color
+  const hlPath = linesLayer.querySelector('#arrowhead-highlight path');
+  if (hlPath) hlPath.setAttribute('fill', highlightColor);
+
+  // Nodes
+  canvasEl.querySelectorAll('.map-node').forEach(el => {
+    el.classList.toggle('chain-highlight', nodeIds.has(el.dataset.id));
+  });
+
+  // Lines
+  linesLayer.querySelectorAll('.conn-line').forEach(el => {
+    const color = edgeColors.get(el.dataset.ekey);
+    const isActive = color !== undefined;
+    el.classList.toggle('chain-highlight-line', isActive);
+    if (isActive) {
+      el.setAttribute('stroke', color);
+      el.setAttribute('stroke-width', 4);
+      const mId = (color === highlightColor || !defs)
+        ? 'arrowhead-highlight'
+        : ensureHighlightColorMarker(defs, color);
+      el.setAttribute('marker-end', `url(#${mId})`);
+    } else {
+      el.setAttribute('stroke', el.dataset.normalStroke || arrowColor);
+      el.setAttribute('stroke-width', 2.5);
+      el.setAttribute('marker-end', el.dataset.normalMarker || 'url(#arrowhead)');
+    }
+  });
+
+  // Display panel rows
+  document.querySelectorAll('#display-panel .chain-row').forEach(row => {
+    const rowCid = parseInt(row.dataset.chainId);
+    row.classList.toggle('chain-highlight', !isNaN(rowCid) && chainIds.has(rowCid));
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Image viewer
+// ─────────────────────────────────────────────────────────────────
+function openImageViewer(nodeId) {
+  const n = nodes[nodeId];
+  if (!n) return;
+  if (isPaintingNode(nodeId)) return; // paintings have no stage screenshots
+  const imgFile = ZONE_IMAGES[nodeId];
+  const isKingdom = n.type === 'kingdom';
+  const isTodo = imgFile === null;
+
+  // On mobile, clear any inline styles set by the desktop drag handler
+  // so the CSS @media (pointer: coarse) rules can position the viewer
+  if (IS_MOBILE) {
+    imageViewer.style.left = '';
+    imageViewer.style.top = '';
+    imageViewer.style.transform = '';
+    imageViewer.style.width = '';
+    imageViewer.style.height = '';
+  }
+  // Reset image zoom/pan every time a new image is opened
+  resetMobileImgZoom();
+
+  imgTitle.textContent = isKingdom ? `${n.label} Kingdom` : `${n.kingdomKey}: ${zoneDisplayLabel(n)}`;
+  imgTitle.style.color = n.color || 'var(--text)';
+
+  imgBody.innerHTML = '';
+
+  if (imgFile) {
+    const img = document.createElement('img');
+    img.src = BASE_IMG + imgFile;
+    img.alt = n.label;
+    img.onerror = () => {
+      img.style.display = 'none';
+      const p = document.createElement('div');
+      p.className = 'img-placeholder';
+      p.textContent = 'Image not found.\nFilename: ' + imgFile;
+      imgBody.appendChild(p);
+    };
+    imgBody.appendChild(img);
+  } else {
+    const p = document.createElement('div');
+    p.className = 'img-placeholder';
+    p.innerHTML = `No image mapped yet.<br><span class="img-todo">TODO: add image for ${n.label}</span>`;
+    imgBody.appendChild(p);
+  }
+
+  imageViewer.classList.add('visible');
+}
+
+function closeImageViewer() {
+  imageViewer.classList.remove('visible');
+}
+
+document.getElementById('image-viewer-close').addEventListener('click', closeImageViewer);
+
+// Close when clicking outside the viewer
+document.addEventListener('mousedown', (e) => {
+  if (imageViewer.classList.contains('visible') && !imageViewer.contains(e.target)) {
+    // Don't close if it's a node click (we'll handle that in wireNodeEvents)
+    if (!e.target.closest('.map-node')) closeImageViewer();
+  }
+});
+
+// Image viewer drag (header)
+(function() {
+  const header = document.getElementById('image-viewer-header');
+  let dragging = false, startX, startY, origLeft, origTop;
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    const rect = imageViewer.getBoundingClientRect();
+    origLeft = rect.left; origTop = rect.top;
+    imageViewer.style.transform = 'none';
+    imageViewer.style.left = origLeft + 'px';
+    imageViewer.style.top  = origTop + 'px';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    imageViewer.style.left = (origLeft + e.clientX - startX) + 'px';
+    imageViewer.style.top  = (origTop  + e.clientY - startY) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// Image viewer resize (bottom-right handle)
+(function() {
+  const resizeHandle = document.getElementById('image-viewer-resize');
+  let resizing = false, startX, startY, origW, origH;
+
+  resizeHandle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    resizing = true;
+    startX = e.clientX; startY = e.clientY;
+    origW = imageViewer.offsetWidth;
+    origH = imageViewer.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!resizing) return;
+    const newW = Math.max(180, origW + (e.clientX - startX));
+    const newH = Math.max(120, origH + (e.clientY - startY));
+    imageViewer.style.width  = newW + 'px';
+    imageViewer.style.height = newH + 'px';
+  });
+
+  document.addEventListener('mouseup', () => { resizing = false; });
+})();
+
+// ─────────────────────────────────────────────────────────────────
+// Mobile image viewer: pinch-to-zoom and single-finger pan
+// ─────────────────────────────────────────────────────────────────
+(function() {
+  let touchMode = null; // 'pinch' | 'pan' | null
+  let pinchStartDist = 0, pinchStartScale = 1;
+  let panStartX = 0, panStartY = 0, panStartImgX = 0, panStartImgY = 0;
+
+  imgBody.addEventListener('touchstart', (e) => {
+    if (!imageViewer.classList.contains('visible')) return;
+    e.preventDefault(); e.stopPropagation();
+
+    if (e.touches.length >= 2) {
+      touchMode = 'pinch';
+      pinchStartDist = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      pinchStartScale = mobileImgScale;
+    } else if (e.touches.length === 1) {
+      touchMode = 'pan';
+      panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
+      panStartImgX = mobileImgPanX;     panStartImgY = mobileImgPanY;
+    }
+  }, { passive: false });
+
+  imgBody.addEventListener('touchmove', (e) => {
+    if (!imageViewer.classList.contains('visible')) return;
+    e.preventDefault(); e.stopPropagation();
+
+    if (touchMode === 'pinch' && e.touches.length >= 2) {
+      const dist = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      mobileImgScale = Math.max(1, Math.min(5, pinchStartScale * (dist / pinchStartDist)));
+      applyMobileImgTransform();
+    } else if (touchMode === 'pan' && e.touches.length === 1 && mobileImgScale > 1) {
+      // Only pan when zoomed in (at scale 1 the image already fits the viewer)
+      mobileImgPanX = panStartImgX + (e.touches[0].clientX - panStartX);
+      mobileImgPanY = panStartImgY + (e.touches[0].clientY - panStartY);
+      applyMobileImgTransform();
+    }
+  }, { passive: false });
+
+  imgBody.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      touchMode = null;
+    } else if (e.touches.length === 1 && touchMode === 'pinch') {
+      // Fingers reduced from 2 → 1: switch to pan mode seamlessly
+      touchMode = 'pan';
+      panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
+      panStartImgX = mobileImgPanX;     panStartImgY = mobileImgPanY;
+    }
+  });
+
+  imgBody.addEventListener('touchcancel', () => { touchMode = null; });
+})();
+
+// ─────────────────────────────────────────────────────────────────
+// Node interaction
+// ─────────────────────────────────────────────────────────────────
+let connecting = null;
+let mouseDownTime = 0;
+let mouseDownPos = null;
+const CLICK_THRESHOLD = 5;   // px movement threshold
+const DRAG_DELAY = 0;        // immediate (single-click opens image on mouseup without drag)
+
+// Desktop stage-preview is now a 1-second click-and-hold (matching mobile), so a
+// plain single click is free to toggle the node's chain highlight.
+let nodePressTimer = null;
+let nodePressFired = false;
+
+/** Single-click a node: highlight every chain passing through it (multi-color). */
+function toggleNodeHighlight(id) {
+  pinnedHighlightNodeId  = (pinnedHighlightNodeId === id) ? null : id;
+  pinnedHighlightChainId = null; // don't fight the single-chain pin
+  applyHighlightClasses();
+}
+
+// ── Decouple: drag a single node by its bottom-right triangle ─────
+// The handle only moves the node it never resizes it. Dragging anywhere else
+// on the node still draws a connection arrow as usual.
+let nodeMoveActive = false;
+
+function moveNodeTo(id, nx, ny, el) {
+  const n = nodes[id];
+  if (!n) return;
+  n.x = Math.max(0, nx);
+  n.y = Math.max(0, ny);
+  if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
+  nodePositions[id] = { x: n.x, y: n.y };
+}
+
+function wireNodeMove(handle, el, id) {
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || !decoupled) return;
+    e.preventDefault();
+    e.stopPropagation();   // keep wireNodeEvents from starting a connection drag
+
+    nodeMoveActive = true;
+    el.classList.add('node-moving');
+    const n = nodes[id];
+    const startX = n.x, startY = n.y;
+    const startMx = e.clientX, startMy = e.clientY;
+
+    function onMove(ev) {
+      moveNodeTo(id, startX + (ev.clientX - startMx) / zoom,
+                     startY + (ev.clientY - startMy) / zoom, el);
+      renderConnections();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      el.classList.remove('node-moving');
+      updateCanvasBounds();
+      saveNodePositions();
+      renderConnections();
+      setTimeout(() => { nodeMoveActive = false; }, 0);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  handle.addEventListener('touchstart', (e) => {
+    if (!decoupled || e.touches.length !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    nodeMoveActive = true;
+    el.classList.add('node-moving');
+    const n = nodes[id];
+    const startX = n.x, startY = n.y;
+    const t0 = e.touches[0];
+    const startMx = t0.clientX, startMy = t0.clientY;
+
+    function onTouchMove(ev) {
+      if (ev.touches.length !== 1) return;
+      ev.preventDefault();
+      const t = ev.touches[0];
+      moveNodeTo(id, startX + (t.clientX - startMx) / zoom,
+                     startY + (t.clientY - startMy) / zoom, el);
+      renderConnections();
+    }
+    function onTouchEnd() {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      el.classList.remove('node-moving');
+      updateCanvasBounds();
+      saveNodePositions();
+      renderConnections();
+      setTimeout(() => { nodeMoveActive = false; }, 0);
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    document.addEventListener('touchcancel', onTouchEnd);
+  }, { passive: false });
+
+  ['click','dblclick','contextmenu'].forEach(evt =>
+    handle.addEventListener(evt, (e) => { e.stopPropagation(); e.preventDefault(); })
+  );
+}
+
+/**
+ * Which part of a node a pointer is over. Uses the segments' own rectangles so
+ * it stays correct even where the decouple move handle overlaps the exit box.
+ */
+function partAtPoint(nodeEl, clientX) {
+  const id = nodeEl.dataset.id;
+  if (!segmentedNodes || !canSegment(id)) return PART_MID;
+  const segIn = nodeEl.querySelector('.node-seg-in');
+  if (segIn) {
+    const r = segIn.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right) return PART_IN;
+  }
+  const segOut = nodeEl.querySelector('.node-seg-out');
+  if (segOut) {
+    const r = segOut.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right) return PART_OUT;
+  }
+  return PART_MID;
+}
+
+function clearDropHighlight() {
+  canvasEl.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  canvasEl.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+}
+
+/** While dragging, highlight only the individual segment under the cursor. */
+function updateDropHighlight(clientX, clientY, srcId) {
+  clearDropHighlight();
+  const under = document.elementFromPoint(clientX, clientY);
+  const nodeEl = under && under.closest ? under.closest('.map-node') : null;
+  if (!nodeEl) return;
+  const isSelf = nodeEl.dataset.id === srcId;
+  // Hovering back over your own node only counts as a drop target when
+  // dragging a self-loop out of the mid segment -- and only its 'in' segment
+  // is a valid landing spot.
+  if (isSelf && !(connecting && connecting.part === PART_MID)) return;
+  if (!segmentedNodes || !canSegment(nodeEl.dataset.id)) {
+    if (!isSelf) nodeEl.classList.add('drag-target');
+    return;
+  }
+  const part = partAtPoint(nodeEl, clientX);
+  if (isSelf && part !== PART_IN) return;
+  const target = part === PART_IN  ? nodeEl.querySelector('.node-seg-in')
+               : part === PART_OUT ? nodeEl.querySelector('.node-seg-out')
+               :                     nodeEl.querySelector('.node-label');
+  (target || nodeEl).classList.add('drop-target');
+}
+
+function wireNodeEvents(el, id) {
+  el.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      e.stopPropagation();
+      mouseDownTime = Date.now();
+      mouseDownPos = { x: e.clientX, y: e.clientY };
+      const startPart = normalizePart(id, partAtPoint(el, e.clientX));
+      connecting = { id, part: startPart };
+      nodePressFired = false;
+      const origin = dragOrigin(id, startPart);
+      previewLine = drawLine(origin, origin, arrowColor, false);
+      previewLine.setAttribute('stroke-dasharray','5,4');
+      // Hold for 1s (without moving) opens the stage preview, as on mobile.
+      if (showImages && !isPaintingNode(id)) {
+        clearTimeout(nodePressTimer);
+        nodePressTimer = setTimeout(() => {
+          nodePressTimer = null;
+          nodePressFired = true;
+          // Cancel the pending connection drag and show the screenshot instead
+          connecting = null;
+          if (previewLine) { previewLine.remove(); previewLine = null; }
+          canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
+          openImageViewer(id);
+        }, 1000);
+      }
+    } else if (e.button === 1) {
+      e.preventDefault(); e.stopPropagation();
+      toggleMark(id, 'green');
+    }
+  });
+
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    toggleMark(id, 'red');
+  });
+
+  el.addEventListener('dblclick', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    disconnectOutgoing(id);
+    saveState();
+    saveEdgeChains();
+    renderConnections();
+    renderDisplayPanel();
+  });
+
+  el.addEventListener('mouseup', (e) => {
+    if (e.button !== 0) return;
+    if (nodeMoveActive) return;   // this gesture was a decoupled node drag
+    clearTimeout(nodePressTimer); nodePressTimer = null;
+    // The 1s hold already opened the preview and consumed this gesture.
+    if (nodePressFired) { nodePressFired = false; return; }
+
+    const moved = mouseDownPos && (
+      Math.abs(e.clientX - mouseDownPos.x) > CLICK_THRESHOLD ||
+      Math.abs(e.clientY - mouseDownPos.y) > CLICK_THRESHOLD
+    );
+
+    if (connecting && moved && (connecting.id !== id || connecting.part === PART_MID)) {
+      // Completed a drag: connect the part it started on to the part it ended on.
+      // (Same-node drops are only meaningful from the mid segment, and only
+      // land as a valid connection if canConnect() accepts it -- see there.)
+      connect(connecting.id, connecting.part, id, partAtPoint(el, e.clientX));
+    } else if (!moved) {
+      // Plain click → toggle this node's chain highlight
+      toggleNodeHighlight(id);
+    }
+  });
+
+  // Touch
+  el.addEventListener('touchstart', (e) => handleNodeTouchStart(e, id), { passive: false });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Global mouse events
+// ─────────────────────────────────────────────────────────────────
+function canvasPointFromEvent(e) {
+  const rect = viewport.getBoundingClientRect();
+  return { x: (e.clientX - rect.left - panX) / zoom, y: (e.clientY - rect.top - panY) / zoom };
+}
+
+document.addEventListener('mousemove', (e) => {
+  // Moving past the click threshold means this is a connection drag, not a hold,
+  // so cancel the pending stage-preview timer.
+  if (nodePressTimer && mouseDownPos && (
+      Math.abs(e.clientX - mouseDownPos.x) > CLICK_THRESHOLD ||
+      Math.abs(e.clientY - mouseDownPos.y) > CLICK_THRESHOLD)) {
+    clearTimeout(nodePressTimer); nodePressTimer = null;
+  }
+  if (connecting && previewLine) {
+    const p = canvasPointFromEvent(e);
+    previewLine.setAttribute('x2', p.x);
+    previewLine.setAttribute('y2', p.y);
+    updateDropHighlight(e.clientX, e.clientY, connecting.id);
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (nodePressTimer) { clearTimeout(nodePressTimer); nodePressTimer = null; }
+  if (connecting) {
+    connecting = null;
+    if (previewLine) { previewLine.remove(); previewLine = null; }
+    clearDropHighlight();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Touch interaction (mobile/tablet)
+// ─────────────────────────────────────────────────────────────────
+let pendingTapTimer = null, lastTapNodeId = null, lastTapTime = 0;
+const DOUBLE_TAP_MS = 320, TAP_MOVE_THRESHOLD = 10;
+
+function cycleMarkMobile(id) {
+  const cur = marks[id] || null;
+  const next = cur==='green' ? 'red' : cur==='red' ? null : 'green';
+  if (next) marks[id] = next; else delete marks[id];
+  saveState(); applyMarkClass(id);
+}
+
+function updateTouchDragHover(cx, cy, src) {
+  updateDropHighlight(cx, cy, src);
+}
+
+function handleNodeTouchStart(e, id) {
+  e.preventDefault(); e.stopPropagation();
+  const startX = e.touches[0].clientX, startY = e.touches[0].clientY;
+  const nodeEl = e.currentTarget && e.currentTarget.classList
+    ? e.currentTarget
+    : canvasEl.querySelector(`.map-node[data-id="${cssEscape(id)}"]`);
+  const startPart = normalizePart(id, nodeEl ? partAtPoint(nodeEl, startX) : PART_MID);
+  let moved = false, dragStarted = false;
+
+  // ── Long-press → open stage preview (1 s, only when Stage Previews is on) ──
+  // Timer is cancelled the moment the finger moves past the movement threshold,
+  // so it can never fire during an intentional connection drag.
+  let longPressTimer = null;
+  if (showImages) {
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      if (!moved) {
+        // Consume the touch gesture. Remove all listeners before opening the viewer
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onCancel);
+        connecting = null;
+        openImageViewer(id);
+      }
+    }, 1000);
+  }
+
+  function onMove(ev) {
+    if (ev.touches.length !== 1) return;
+    const ct = ev.touches[0];
+    if (!moved && Math.hypot(ct.clientX-startX, ct.clientY-startY) > TAP_MOVE_THRESHOLD) {
+      moved = true; dragStarted = true;
+      // User is dragging, cancel the long-press immediately
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      connecting = { id, part: startPart };
+      const tOrigin = dragOrigin(id, startPart);
+      previewLine = drawLine(tOrigin, tOrigin, arrowColor, false);
+      previewLine.setAttribute('stroke-dasharray','5,4');
+    }
+    if (dragStarted) {
+      ev.preventDefault();
+      const p = canvasPointFromEvent(ct);
+      previewLine.setAttribute('x2',p.x); previewLine.setAttribute('y2',p.y);
+      updateTouchDragHover(ct.clientX, ct.clientY, id);
+    }
+  }
+
+  function onEnd(ev) {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+    document.removeEventListener('touchcancel', onCancel);
+
+    if (dragStarted) {
+      const ct = ev.changedTouches[0];
+      const targetEl = document.elementFromPoint(ct.clientX, ct.clientY);
+      const targetNodeEl = targetEl && targetEl.closest('.map-node');
+      connecting = null;
+      if (previewLine) { previewLine.remove(); previewLine = null; }
+      clearDropHighlight();
+      if (targetNodeEl && (targetNodeEl.dataset.id !== id || startPart === PART_MID)) {
+        connect(id, startPart, targetNodeEl.dataset.id, partAtPoint(targetNodeEl, ct.clientX));
+      }
+      return;
+    }
+
+    const now = Date.now();
+    if (lastTapNodeId === id && (now - lastTapTime) < DOUBLE_TAP_MS) {
+      if (pendingTapTimer) { clearTimeout(pendingTapTimer); pendingTapTimer = null; }
+      lastTapNodeId = null;
+      disconnectOutgoing(id); saveState(); saveEdgeChains(); renderConnections(); renderDisplayPanel();
+    } else {
+      lastTapNodeId = id; lastTapTime = now;
+      if (pendingTapTimer) clearTimeout(pendingTapTimer);
+      pendingTapTimer = setTimeout(() => {
+        pendingTapTimer = null;
+        cycleMarkMobile(id);
+      }, DOUBLE_TAP_MS);
+    }
+  }
+
+  function onCancel() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+    document.removeEventListener('touchcancel', onCancel);
+    connecting = null;
+    if (previewLine) { previewLine.remove(); previewLine = null; }
+    clearDropHighlight();
+  }
+
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+  document.addEventListener('touchcancel', onCancel);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Display panel
+// ─────────────────────────────────────────────────────────────────
+const MAX_CHAINS = 2000; // safety cap against pathological branch/merge graphs
+
+function computeChains() {
+  const allIds = Object.keys(nodes);
+  const chains = [];
+
+  function extend(pathIds, pathSet, cur) {
+    if (chains.length >= MAX_CHAINS) return;
+    const outs = outgoing[cur] || [];
+    if (outs.length === 0) {
+      if (pathIds.length > 1) chains.push({ ids: pathIds.slice(), looped: false });
+      return;
+    }
+    outs.forEach(next => {
+      if (pathSet.has(next)) {
+        chains.push({ ids: pathIds.concat(next), looped: true });
+      } else if (DEAD_END_IDS.has(next) && (incoming[next] || []).length > 0) {
+        // Dead-end with incoming: end the current chain here and start fresh from next
+        chains.push({ ids: pathIds.concat(next), looped: false });
+        if ((outgoing[next] || []).length > 0) {
+          extend([next], new Set([next]), next);
+        }
+      } else {
+        pathSet.add(next);
+        extend(pathIds.concat(next), pathSet, next);
+        pathSet.delete(next);
+      }
+    });
+  }
+
+  // Start a path at every node that has outputs but no inputs (a true root).
+  const roots = allIds.filter(id => (outgoing[id] || []).length > 0 && (incoming[id] || []).length === 0);
+  roots.forEach(r => extend([r], new Set([r]), r));
+
+  // Any node with outputs that wasn't reached from a root is part of a pure
+  // cycle (every node in it has both incoming and outgoing). Trace those too.
+  const reached = new Set();
+  chains.forEach(c => c.ids.forEach(id => reached.add(id)));
+  const cycleHandled = new Set();
+  allIds.forEach(id => {
+    if (reached.has(id) || cycleHandled.has(id) || !(outgoing[id] || []).length) return;
+    cycleHandled.add(id);
+    extend([id], new Set([id]), id);
+    chains.length && chains[chains.length - 1].ids.forEach(n => cycleHandled.add(n));
+  });
+
+  return chains;
+}
+
+/**
+ * Returns the maximal unbranched run of nodes that a given src→tgt arrow is
+ * part of: walk backward through src while each node has exactly one
+ * incoming arrow, and forward through tgt while each node has exactly one
+ * outgoing arrow. Used for hover/click highlighting on the map.
+ */
+function getStraightPath(src, tgt) {
+  const path = [src, tgt];
+  const seen = new Set(path);
+  let cur = src;
+  while ((incoming[cur] || []).length === 1) {
+    const prev = incoming[cur][0];
+    if (seen.has(prev)) break;
+    path.unshift(prev);
+    seen.add(prev);
+    cur = prev;
+  }
+  cur = tgt;
+  while ((outgoing[cur] || []).length === 1) {
+    const next = outgoing[cur][0];
+    if (seen.has(next)) break;
+    path.push(next);
+    seen.add(next);
+    cur = next;
+  }
+  return path;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Chain-based display computation
+// ─────────────────────────────────────────────────────────────────
+function computeChainsFromEdgeAssignments() {
+  const byChain = {};
+  edgeList.forEach(ed => {
+    const cid = edgeChains[edgeKeyOf(ed)];
+    if (cid === undefined) return;
+    if (!nodes[ed.src] || !nodes[ed.tgt]) return;
+    if (!byChain[cid]) byChain[cid] = [];
+    byChain[cid].push(ed);
+  });
+
+  const result = [];
+  Object.keys(byChain).map(Number).sort((a, b) => a - b).forEach(cid => {
+    const eds = byChain[cid];
+    const outMap = {}, inChain = new Set(), allNodes = new Set();
+    eds.forEach(ed => {
+      if (!outMap[ed.src]) outMap[ed.src] = [];
+      outMap[ed.src].push(ed);
+      inChain.add(ed.tgt);
+      allNodes.add(ed.src); allNodes.add(ed.tgt);
+    });
+    const roots = [...allNodes].filter(n => !inChain.has(n));
+
+    // Paths carry their edges alongside their node ids, so the display panel can
+    // say which segment each arrow left from and arrived at.
+    function dfs(node, path, edges, visited) {
+      const nexts = outMap[node] || [];
+      if (nexts.length === 0) {
+        if (path.length > 1) {
+          result.push({ chainId: cid, ids: path.slice(), edges: edges.slice(), looped: false });
+        }
+        return;
+      }
+      for (const ed of nexts) {
+        if (visited.has(ed.tgt)) {
+          result.push({ chainId: cid, ids: [...path, ed.tgt], edges: [...edges, ed], looped: true });
+        } else {
+          const v2 = new Set(visited); v2.add(ed.tgt);
+          dfs(ed.tgt, [...path, ed.tgt], [...edges, ed], v2);
+        }
+      }
+    }
+
+    if (roots.length === 0 && allNodes.size > 0) {
+      const start = [...allNodes][0];
+      dfs(start, [start], [], new Set([start]));
+    } else {
+      roots.forEach(r => dfs(r, [r], [], new Set([r])));
+    }
+  });
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Display panel layout & resize
+// ─────────────────────────────────────────────────────────────────
+function applyDisplayLayout() {
+  const mainArea = document.getElementById('main-area');
+  mainArea.className = `dp-${displayPosition}`;
+  const panel = document.getElementById('display-panel');
+  if (displayPosition === 'top' || displayPosition === 'bottom') {
+    panel.style.height = displaySize + 'px';
+    panel.style.width  = '';
+  } else {
+    panel.style.width  = displaySize + 'px';
+    panel.style.height = '';
+  }
+}
+
+(function setupDisplayResize() {
+  const handle = document.getElementById('display-resize-handle');
+  let dragging = false, startPos = 0, startSize = 0;
+
+  // Shared for mouse + touch: axis follows the panel position (vertical when the
+  // panel is on the top/bottom edge, horizontal when it's on the left/right).
+  function begin(clientX, clientY) {
+    dragging = true;
+    handle.classList.add('dragging');
+    startPos  = (displayPosition === 'top' || displayPosition === 'bottom') ? clientY : clientX;
+    startSize = displaySize;
+  }
+  function move(clientX, clientY) {
+    if (!dragging) return;
+    let delta;
+    if      (displayPosition === 'top')    delta =  (clientY - startPos);
+    else if (displayPosition === 'bottom') delta = -(clientY - startPos);
+    else if (displayPosition === 'left')   delta =  (clientX - startPos);
+    else                                   delta = -(clientX - startPos);
+    displaySize = Math.max(60, Math.min(700, startSize + delta));
+    applyDisplayLayout();
+  }
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    saveSettings();
+  }
+
+  // Mouse
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    begin(e.clientX, e.clientY);
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
+  document.addEventListener('mouseup', end);
+
+  // Touch (mobile): the handle had no touch wiring, so it couldn't be dragged.
+  handle.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    begin(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault(); e.stopPropagation();
+  }, { passive: false });
+  handle.addEventListener('touchmove', (e) => {
+    if (!dragging || e.touches.length !== 1) return;
+    move(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+  }, { passive: false });
+  handle.addEventListener('touchend', end);
+  handle.addEventListener('touchcancel', end);
+})();
+
+function renderDisplayPanel() {
+  const panel = document.getElementById('display-panel-content');
+  panel.innerHTML = '';
+
+  const allChains = computeChainsFromEdgeAssignments();
+
+  if (allChains.length === 0) {
+    const p = document.createElement('div');
+    p.className = 'empty-note';
+    p.textContent = 'No connections yet. Drag between stages to build a path.';
+    panel.appendChild(p);
+    return;
+  }
+
+  // Painting chains go to the top of the panel, with no letter badges.
+  const paintingChains = allChains.filter(c => isPaintingNode(c.ids[0]));
+  const normalChains   = allChains.filter(c => !isPaintingNode(c.ids[0]));
+  const chains = [...paintingChains, ...normalChains];
+
+  chains.forEach(chain => {
+    const isPainting = isPaintingNode(chain.ids[0]);
+    const row = document.createElement('div');
+    row.className = 'chain-row' + (isPainting ? ' painting-chain-row' : '');
+    row.dataset.chainId = chain.chainId;
+    row.dataset.path = JSON.stringify(chain.ids);
+
+    // Chain label badge (bold, chain's color) painting chains aren't lettered
+    if (!isPainting) {
+      const badge = document.createElement('span');
+      badge.className = 'chain-label-badge';
+      const lbl = chainLabelMap[chain.chainId] || '?';
+      const col = chainLetterColor(chain.chainId);
+      badge.textContent = lbl;
+      badge.style.color = col;
+      badge.title = `Chain ${lbl}`;
+      row.appendChild(badge);
+    }
+
+    // Node labels
+    chain.ids.forEach((id, idx) => {
+      const n = nodes[id];
+      if (!n) return;
+      const eds = chain.edges || [];
+      const words = SEGMENT_LABELS[segmentStyle] || SEGMENT_LABELS.inout;
+
+      // With segments on, the part an arrow arrived on goes right before the
+      // node name (after the incoming arrow), and the part the next arrow
+      // leaves from goes right after the name (before the outgoing arrow):
+      // e.g. "Zone (out) → (in) Zone".
+      if (segmentedNodes && !isPainting) {
+        const arrivedOn = idx > 0 ? eds[idx - 1] && eds[idx - 1].tPart : null;
+        if (arrivedOn === PART_IN || arrivedOn === PART_OUT) {
+          const tag = document.createElement('span');
+          tag.className = 'seg-tag';
+          tag.textContent = `(${arrivedOn === PART_IN ? words.in : words.out})`;
+          row.appendChild(tag);
+        }
+      }
+
+      const span = document.createElement('span');
+      span.textContent = zoneDisplayLabel(n);
+      span.style.color = n.type === 'zone' ? n.color : 'var(--text)';
+      span.style.fontWeight = n.type === 'kingdom' ? 'bold' : 'normal';
+      row.appendChild(span);
+
+      if (segmentedNodes && !isPainting) {
+        const leftFrom = idx < chain.ids.length - 1 ? eds[idx] && eds[idx].sPart : null;
+        if (leftFrom === PART_IN || leftFrom === PART_OUT) {
+          const tag = document.createElement('span');
+          tag.className = 'seg-tag';
+          tag.textContent = `(${leftFrom === PART_IN ? words.in : words.out})`;
+          row.appendChild(tag);
+        }
+      }
+
+      if (idx < chain.ids.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow'; arrow.textContent = '→';
+        row.appendChild(arrow);
+      }
+    });
+
+    if (chain.looped) {
+      const tag = document.createElement('span');
+      tag.className = 'loop-tag'; tag.textContent = '(loop)';
+      row.appendChild(tag);
+    }
+
+    row.addEventListener('mouseenter', () => {
+      hoverHighlightChainId = chain.chainId;
+      applyHighlightClasses();
+    });
+    row.addEventListener('mouseleave', () => {
+      hoverHighlightChainId = null;
+      applyHighlightClasses();
+    });
+    row.addEventListener('click', () => {
+      pinnedHighlightNodeId  = null;
+      pinnedHighlightChainId = (pinnedHighlightChainId === chain.chainId) ? null : chain.chainId;
+      applyHighlightClasses();
+    });
+    panel.appendChild(row);
+  });
+  applyHighlightClasses();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Pan & zoom
+// ─────────────────────────────────────────────────────────────────
+let panX = 40, panY = 20, zoom = 0.8;
+let isPanning = false, panStart = {x:0,y:0}, panOrigin = {x:0,y:0};
+
+const zoomSlider  = document.getElementById('zoom-slider');
+const zoomReadout = document.getElementById('zoom-readout');
+const zoomInput   = document.getElementById('zoom-input');
+const ZOOM_MIN = 0.4, ZOOM_MAX = 1.2;
+
+function applyTransform() {
+  canvasEl.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+  const pct = Math.round(zoom*100);
+  zoomReadout.textContent = `${pct}%`;
+  zoomSlider.value = pct;
+}
+
+zoomSlider.addEventListener('input', () => {
+  const nz = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomSlider.value/100));
+  const rect = viewport.getBoundingClientRect();
+  const cx = rect.width/2, cy = rect.height/2;
+  panX = cx - ((cx-panX)/zoom)*nz;
+  panY = cy - ((cy-panY)/zoom)*nz;
+  zoom = nz; applyTransform();
+});
+
+zoomReadout.addEventListener('click', () => {
+  zoomReadout.style.display = 'none';
+  zoomInput.style.display = '';
+  zoomInput.value = Math.round(zoom*100);
+  zoomInput.focus(); zoomInput.select();
+});
+
+function commitZoomInput() {
+  let val = parseInt(zoomInput.value, 10);
+  if (!isNaN(val)) {
+    val = Math.min(Math.round(ZOOM_MAX*100), Math.max(Math.round(ZOOM_MIN*100), val));
+    const nz = val/100;
+    const rect = viewport.getBoundingClientRect();
+    const cx=rect.width/2, cy=rect.height/2;
+    panX=cx-((cx-panX)/zoom)*nz; panY=cy-((cy-panY)/zoom)*nz;
+    zoom=nz; applyTransform();
+  }
+  zoomInput.style.display='none'; zoomReadout.style.display='';
+}
+zoomInput.addEventListener('blur', commitZoomInput);
+zoomInput.addEventListener('keydown', (e) => {
+  if (e.key==='Enter') zoomInput.blur();
+  if (e.key==='Escape') { zoomInput.style.display='none'; zoomReadout.style.display=''; }
+});
+
+viewport.addEventListener('mousedown', (e) => {
+  if (activeClusDrag) return;
+  if (e.target!==viewport && e.target!==canvasEl) return;
+  if (pinnedHighlightChainId !== null || pinnedHighlightNodeId !== null) {
+    pinnedHighlightChainId = null; pinnedHighlightNodeId = null; applyHighlightClasses();
+  }
+  isPanning=true; viewport.classList.add('panning');
+  panStart={x:e.clientX, y:e.clientY}; panOrigin={x:panX, y:panY};
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  panX=panOrigin.x+(e.clientX-panStart.x);
+  panY=panOrigin.y+(e.clientY-panStart.y);
+  applyTransform();
+});
+
+document.addEventListener('mouseup', () => { isPanning=false; viewport.classList.remove('panning'); });
+
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect=viewport.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const prev=zoom;
+  const delta=e.deltaY>0?-0.1:0.1;
+  zoom=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,zoom+delta));
+  panX=mx-((mx-panX)/prev)*zoom;
+  panY=my-((my-panY)/prev)*zoom;
+  applyTransform();
+}, { passive: false });
+
+// Touch pan & pinch zoom
+let touchPanState=null, pinchState=null;
+
+function touchDist(t1,t2) { return Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY); }
+
+viewport.addEventListener('touchstart', (e) => {
+  // Tapping the open canvas deactivates any selected cluster panel
+  if (activeMobileCluster && (e.target === viewport || e.target === canvasEl)) {
+    const prevDiv = canvasEl.querySelector(`.cluster-bg[data-kingdom="${activeMobileCluster}"]`);
+    if (prevDiv) prevDiv.classList.remove('mobile-active');
+    activeMobileCluster = null;
+  }
+  if (e.target!==viewport && e.target!==canvasEl) return;
+  if (e.touches.length===1) {
+    touchPanState = { startX:e.touches[0].clientX, startY:e.touches[0].clientY, originX:panX, originY:panY };
+  } else if (e.touches.length===2) {
+    touchPanState=null;
+    const rect=viewport.getBoundingClientRect();
+    pinchState = {
+      startDist: touchDist(e.touches[0],e.touches[1]),
+      startZoom: zoom,
+      midX:(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left,
+      midY:(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top,
+      panOriginX:panX, panOriginY:panY,
+    };
+  }
+},{ passive:false });
+
+viewport.addEventListener('touchmove', (e) => {
+  if (e.touches.length===2 && pinchState) {
+    e.preventDefault();
+    const nz=Math.min(2,Math.max(0.25,pinchState.startZoom*touchDist(e.touches[0],e.touches[1])/pinchState.startDist));
+    panX=pinchState.midX-((pinchState.midX-pinchState.panOriginX)/pinchState.startZoom)*nz;
+    panY=pinchState.midY-((pinchState.midY-pinchState.panOriginY)/pinchState.startZoom)*nz;
+    zoom=nz; applyTransform();
+  } else if (e.touches.length===1 && touchPanState) {
+    e.preventDefault();
+    panX=touchPanState.originX+(e.touches[0].clientX-touchPanState.startX);
+    panY=touchPanState.originY+(e.touches[0].clientY-touchPanState.startY);
+    applyTransform();
+  }
+},{ passive:false });
+
+viewport.addEventListener('touchend', (e) => {
+  if (e.touches.length===0) { touchPanState=null; pinchState=null; }
+  else if (e.touches.length===1) {
+    pinchState=null;
+    touchPanState={startX:e.touches[0].clientX,startY:e.touches[0].clientY,originX:panX,originY:panY};
+  }
+});
+viewport.addEventListener('touchcancel',()=>{ touchPanState=null; pinchState=null; });
+
+// ─────────────────────────────────────────────────────────────────
+// Top bar buttons
+// ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-controls').addEventListener('click', (e) => {
+  const panel = document.getElementById('controls-panel');
+  const hidden = panel.classList.toggle('hidden');
+  e.target.classList.toggle('active', !hidden);
+  e.target.textContent = hidden ? 'Info & Controls' : 'Info & Controls ✕';
+});
+
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.add('visible');
+});
+document.getElementById('settings-modal-close').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.remove('visible');
+});
+document.getElementById('settings-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('settings-overlay')) {
+    document.getElementById('settings-overlay').classList.remove('visible');
+  }
+});
+
+document.getElementById('btn-display').addEventListener('click', (e) => {
+  const panel = document.getElementById('display-panel');
+  const hidden = panel.classList.toggle('hidden');
+  e.target.classList.toggle('active', !hidden);
+  e.target.textContent = hidden ? 'Show Display' : 'Hide Display';
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear all connections, marks, and notes on the map?')) return;
+  edgeList=[]; outgoing={}; incoming={}; marks={};
+  edgeChains={}; chainColors={}; nextChainId=0;
+  hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
+  closeActiveChainPicker();
+  recomputeChainLabels();
+  saveState();
+  saveEdgeChains();
+  clearNotes();
+  // Clearing also resets any decoupled node positions back to the grouped layout.
+  clearNodePositions();
+  canvasEl.querySelectorAll('.map-node').forEach(el => el.classList.remove('mark-green','mark-red'));
+  fullRender();
+});
+
+// Settings: grid apply
+document.getElementById('btn-apply-grid').addEventListener('click', () => {
+  const c = parseInt(document.getElementById('grid-cols').value, 10);
+  if (isNaN(c)||c<1||c>15) {
+    alert('Columns must be between 1 and 15.');
+    return;
+  }
+  const numKingdoms = visibleKingdomKeys().length;
+  const r = Math.ceil(numKingdoms / c);
+  applyGrid(r, c);
+});
+
+// Settings: stage previews toggle
+const toggleImages = document.getElementById('toggle-images');
+const toggleImagesLabel = document.getElementById('toggle-images-label');
+toggleImages.addEventListener('change', () => {
+  showImages = toggleImages.checked;
+  toggleImagesLabel.textContent = showImages ? 'On' : 'Off';
+  saveSettings();
+});
+
+// Settings: brief "Saved!" confirmation flash next to a save button
+function flashSaved(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('visible');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove('visible'), 1400);
+}
+
+// Settings: arrow color
+const arrowColorInput = document.getElementById('arrow-color');
+document.getElementById('btn-save-arrow-color').addEventListener('click', () => {
+  arrowColor = arrowColorInput.value;
+  saveSettings();
+  renderConnections();
+  flashSaved('arrow-color-saved');
+});
+
+// Settings: chain highlighting toggle (applies immediately, no save button needed)
+const toggleHighlight = document.getElementById('toggle-highlight');
+const toggleHighlightLabel = document.getElementById('toggle-highlight-label');
+toggleHighlight.addEventListener('change', () => {
+  highlightEnabled = toggleHighlight.checked;
+  toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
+  saveSettings();
+  applyHighlightClasses();
+});
+
+// Settings: painting tracker toggle
+const togglePainting = document.getElementById('toggle-painting');
+const togglePaintingLabel = document.getElementById('toggle-painting-label');
+togglePainting.addEventListener('change', () => {
+  paintingTracker = togglePainting.checked;
+  togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
+  saveSettings();
+  fullRender();
+});
+
+// Settings: segmented nodes toggle + label-style dropdown
+const toggleSegmented      = document.getElementById('toggle-segmented');
+const toggleSegmentedLabel = document.getElementById('toggle-segmented-label');
+const segmentStyleSelect   = document.getElementById('segment-style');
+const segmentStyleRow      = document.getElementById('segment-style-row');
+
+function syncSegmentStyleRow() {
+  if (segmentStyleRow) segmentStyleRow.classList.toggle('disabled', !segmentedNodes);
+}
+
+toggleSegmented.addEventListener('change', () => {
+  segmentedNodes = toggleSegmented.checked;
+  toggleSegmentedLabel.textContent = segmentedNodes ? 'On' : 'Off';
+  syncSegmentStyleRow();
+  saveSettings();
+  fullRender();
+});
+
+segmentStyleSelect.addEventListener('change', () => {
+  segmentStyle = segmentStyleSelect.value;
+  saveSettings();
+  if (segmentedNodes) fullRender();
+});
+
+// Settings: decouple toggle
+const toggleDecouple      = document.getElementById('toggle-decouple');
+const toggleDecoupleLabel = document.getElementById('toggle-decouple-label');
+
+toggleDecouple.addEventListener('change', () => {
+  decoupled = toggleDecouple.checked;
+  toggleDecoupleLabel.textContent = decoupled ? 'On' : 'Off';
+
+  if (decoupled) {
+    // Freeze the current grouped layout as the starting free-form positions,
+    // then drop the panels. Arrows are untouched.
+    clearNodePositions();
+    buildLayout();
+    snapshotNodePositions();
+  } else {
+    // Turning it off discards node positions and returns to grouped panels at
+    // 4 columns. Connections, chains, marks and notes are all preserved.
+    clearNodePositions();
+    clusterPositions = {};
+    clusterSizes = {};
+    gridCols = 4;
+    gridRows = Math.ceil(visibleKingdomKeys().length / gridCols);
+    savePositions(); saveSizes(); saveGrid();
+    const colsInput = document.getElementById('grid-cols');
+    if (colsInput) colsInput.value = gridCols;
+  }
+
+  saveSettings();
+  fullRender();
+});
+
+// Settings: highlight color
+const highlightColorInput = document.getElementById('highlight-color');
+document.getElementById('btn-save-highlight-color').addEventListener('click', () => {
+  highlightColor = highlightColorInput.value;
+  document.documentElement.style.setProperty('--highlight-color', highlightColor);
+  saveSettings();
+  applyHighlightClasses();
+  flashSaved('highlight-color-saved');
+});
+
+// Arrow color mode toggles: Random Color / One Color / Kingdom Gradients.
+// Only one may be on at a time.
+const toggleRandomColors     = document.getElementById('toggle-random-colors');
+const toggleOneColor         = document.getElementById('toggle-one-color');
+const toggleKingdomGradients = document.getElementById('toggle-kingdom-gradients');
+const arrowModeToggles = [toggleRandomColors, toggleOneColor, toggleKingdomGradients].filter(Boolean);
+
+function setArrowColorMode(mode) {
+  arrowColorMode = mode;
+  randomChainColors = mode === 'random';
+  arrowModeToggles.forEach(t => { t.checked = (t.dataset.mode === mode); });
+  saveSettings();
+  renderConnections();
+  renderDisplayPanel();
+}
+
+arrowModeToggles.forEach(toggle => {
+  toggle.addEventListener('change', () => {
+    if (!toggle.checked) {
+      // Prevent turning the active mode off with nothing selected
+      // exactly one mode must always be active.
+      toggle.checked = true;
+      return;
+    }
+    setArrowColorMode(toggle.dataset.mode);
+  });
+});
+
+// Settings: kingdom visibility toggles
+document.querySelectorAll('[id^="toggle-kingdom-"]').forEach(toggle => {
+  toggle.addEventListener('change', () => {
+    const key = toggle.dataset.kingdom;
+    kingdomVisible[key] = toggle.checked;
+    saveSettings();
+    fullRender();
+  });
+});
+
+// Display position select
+const displayPositionSelect = document.getElementById('display-position-select');
+if (displayPositionSelect) {
+  displayPositionSelect.addEventListener('change', () => {
+    displayPosition = displayPositionSelect.value;
+    saveSettings();
+    applyDisplayLayout();
+    renderDisplayPanel(); // redraw to reattach resize handle
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// Freeform notes
+// ─────────────────────────────────────────────────────────────────
+const NOTE_ICON_RE = /\{icon(?::([^}]+))?\}/g;
+let noteDragState = null;   // active move/resize gesture
+let notePickerState = null; // { note, tokenIndex } while the icon picker is open
+
+function renderNotes() {
+  canvasEl.querySelectorAll('.map-note-sticky').forEach(el => el.remove());
+  mapNotes.forEach(n => canvasEl.appendChild(createNoteElement(n)));
+}
+
+function getNoteEl(id) {
+  return canvasEl.querySelector(`.map-note-sticky[data-id="${id}"]`);
+}
+
+// Build the (display-mode) DOM for one note.
+function createNoteElement(note) {
+  const el = document.createElement('div');
+  el.className = 'map-note-sticky';
+  el.dataset.id = note.id;
+  el.style.left  = note.x + 'px';
+  el.style.top   = note.y + 'px';
+  el.style.width = (note.w || NOTE_DEFAULT_W) + 'px';
+
+  const content = document.createElement('div');
+  content.className = 'note-content';
+  el.appendChild(content);
+
+  const handle = document.createElement('div');
+  handle.className = 'note-resize-handle';
+  handle.title = 'Drag to resize width';
+  el.appendChild(handle);
+
+  renderNoteDisplay(note, content);
+  wireNoteInteractions(note, el, content, handle);
+  return el;
+}
+
+// Fill a note's content element with its parsed display (text + {icon} images).
+function renderNoteDisplay(note, content) {
+  content.innerHTML = '';
+  const text = note.text || '';
+  if (!text.trim()) {
+    content.classList.add('empty-note-hint');
+    content.textContent = 'New note';
+    return;
+  }
+  content.classList.remove('empty-note-hint');
+
+  let last = 0, tokenIndex = 0, m;
+  NOTE_ICON_RE.lastIndex = 0;
+  while ((m = NOTE_ICON_RE.exec(text)) !== null) {
+    if (m.index > last) content.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const file = (m[1] && m[1].trim()) ? m[1].trim() : 'Moon.png';
+    const img = document.createElement('img');
+    img.className = 'note-icon';
+    img.src = 'assets/' + file;
+    img.alt = 'icon';
+    img.title = 'Click to change icon';
+    const idx = tokenIndex;
+    img.addEventListener('mousedown', (e) => e.stopPropagation());
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openNoteIconPicker(note, idx, e.clientX, e.clientY);
+    });
+    content.appendChild(img);
+    last = m.index + m[0].length;
+    tokenIndex++;
+  }
+  if (last < text.length) content.appendChild(document.createTextNode(text.slice(last)));
+}
+
+// Replace the Nth {icon...} token in a note's text with a chosen icon file.
+function setNoteTokenIcon(note, tokenIndex, file) {
+  let i = 0;
+  note.text = (note.text || '').replace(NOTE_ICON_RE, (match) => {
+    return (i++ === tokenIndex) ? `{icon:${file}}` : match;
+  });
+  saveNotes();
+  const el = getNoteEl(note.id);
+  if (el) renderNoteDisplay(note, el.querySelector('.note-content'));
+}
+
+function openNoteIconPicker(note, tokenIndex, clientX, clientY) {
+  const picker = document.getElementById('note-icon-picker');
+  notePickerState = { note, tokenIndex };
+  picker.innerHTML = '';
+  NOTE_PICKER_ICONS.forEach(file => {
+    const img = document.createElement('img');
+    img.src = 'assets/' + file;
+    img.alt = file;
+    img.title = file.replace('.png', '');
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (notePickerState) setNoteTokenIcon(notePickerState.note, notePickerState.tokenIndex, file);
+      closeNoteIconPicker();
+    });
+    picker.appendChild(img);
+  });
+  picker.classList.add('open');
+  // Clamp to viewport
+  const pw = 190, ph = 130;
+  let x = Math.min(clientX, window.innerWidth - pw - 8);
+  let y = Math.min(clientY, window.innerHeight - ph - 8);
+  picker.style.left = Math.max(8, x) + 'px';
+  picker.style.top  = Math.max(8, y) + 'px';
+}
+
+function closeNoteIconPicker() {
+  const picker = document.getElementById('note-icon-picker');
+  picker.classList.remove('open');
+  notePickerState = null;
+}
+document.addEventListener('mousedown', (e) => {
+  const picker = document.getElementById('note-icon-picker');
+  if (picker.classList.contains('open') && !picker.contains(e.target)) closeNoteIconPicker();
+});
+
+function noteIsEditing(el) { return el.classList.contains('note-editing'); }
+
+// Switch a note into edit mode (raw text in an auto-growing textarea).
+function enterNoteEdit(note, el) {
+  if (noteIsEditing(el)) return;
+  el.classList.add('note-editing');
+  const content = el.querySelector('.note-content');
+  content.style.display = 'none';
+
+  const ta = document.createElement('textarea');
+  ta.className = 'note-edit-area';
+  ta.value = note.text || '';
+  el.insertBefore(ta, content);
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+  ta.addEventListener('input', grow);
+  ta.addEventListener('mousedown', (e) => e.stopPropagation());
+  ta.addEventListener('dblclick', (e) => e.stopPropagation());
+  const finish = () => {
+    note.text = ta.value;
+    saveNotes();
+    ta.remove();
+    content.style.display = '';
+    el.classList.remove('note-editing');
+    renderNoteDisplay(note, content);
+  };
+  ta.addEventListener('blur', finish);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+  });
+  ta.focus();
+  grow();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function addNoteAt(canvasX, canvasY) {
+  const note = { id: nextNoteId++, x: Math.round(canvasX), y: Math.round(canvasY), w: NOTE_DEFAULT_W, text: '' };
+  mapNotes.push(note);
+  saveNotes();
+  const el = createNoteElement(note);
+  canvasEl.appendChild(el);
+  enterNoteEdit(note, el); // open straight into editing so it's usable immediately
+}
+
+function removeNote(id) {
+  const idx = mapNotes.findIndex(n => n.id === id);
+  if (idx === -1) return;
+  mapNotes.splice(idx, 1);
+  saveNotes();
+  const el = getNoteEl(id);
+  if (el) el.remove();
+}
+
+function clearNotes() {
+  mapNotes = [];
+  saveNotes();
+  canvasEl.querySelectorAll('.map-note-sticky').forEach(el => el.remove());
+}
+
+// Interactions: drag to move, corner to resize width, single-click to edit,
+// double-click to remove. Both mouse and touch.
+function wireNoteInteractions(note, el, content, handle) {
+  let editTimer = null;
+  let suppressClick = false;
+
+  // ── Move (drag body) ──
+  function beginMove(clientX, clientY) {
+    noteDragState = {
+      type: 'move', id: note.id,
+      startX: clientX, startY: clientY,
+      originX: note.x, originY: note.y,
+      moved: false, el,
+    };
+    el.classList.add('note-dragging');
+  }
+  function beginResize(clientX) {
+    noteDragState = {
+      type: 'resize', id: note.id,
+      startX: clientX, originW: note.w || NOTE_DEFAULT_W,
+      moved: false, el,
+    };
+    el.classList.add('note-dragging');
+  }
+
+  // Mouse: body
+  content.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || noteIsEditing(el)) return;
+    if (e.target.classList.contains('note-icon')) return; // icons open the picker
+    e.preventDefault(); e.stopPropagation();
+    beginMove(e.clientX, e.clientY);
+  });
+  content.addEventListener('click', (e) => {
+    if (suppressClick) { suppressClick = false; return; }
+    if (noteIsEditing(el)) return;
+    if (e.target.classList.contains('note-icon')) return;
+    clearTimeout(editTimer);
+    editTimer = setTimeout(() => enterNoteEdit(note, el), 210);
+  });
+  el.addEventListener('dblclick', (e) => {
+    clearTimeout(editTimer);
+    if (noteIsEditing(el)) return; // let text selection work while editing
+    e.preventDefault();
+    removeNote(note.id);
+  });
+
+  // Mouse: resize handle
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    beginResize(e.clientX);
+  });
+
+  // Expose a way for the global mouseup to flag "this was a drag, swallow click"
+  el._noteSuppressClick = () => { suppressClick = true; };
+
+  // ── Touch ──
+  let lastTap = 0;
+  content.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || noteIsEditing(el)) return;
+    if (e.target.classList.contains('note-icon')) return;
+    e.stopPropagation();
+    beginMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  content.addEventListener('touchmove', (e) => {
+    if (!noteDragState || noteDragState.type !== 'move' || noteDragState.id !== note.id) return;
+    e.preventDefault();
+    moveNoteGesture(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  content.addEventListener('touchend', (e) => {
+    if (!noteDragState || noteDragState.id !== note.id) return;
+    const wasMoved = noteDragState.moved;
+    endNoteGesture();
+    if (wasMoved) return;
+    if (e.target.classList.contains('note-icon')) return;
+    const now = Date.now();
+    if (now - lastTap < 320) { lastTap = 0; removeNote(note.id); } // double-tap removes
+    else { lastTap = now; enterNoteEdit(note, el); }              // single tap edits
+  });
+  handle.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault(); e.stopPropagation();
+    beginResize(e.touches[0].clientX);
+  }, { passive: false });
+  handle.addEventListener('touchmove', (e) => {
+    if (!noteDragState || noteDragState.type !== 'resize' || noteDragState.id !== note.id) return;
+    e.preventDefault();
+    moveNoteGesture(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  handle.addEventListener('touchend', () => { if (noteDragState && noteDragState.id === note.id) endNoteGesture(); });
+}
+
+function moveNoteGesture(clientX, clientY) {
+  const st = noteDragState;
+  if (!st) return;
+  const note = mapNotes.find(n => n.id === st.id);
+  if (!note) return;
+  if (st.type === 'move') {
+    const dx = (clientX - st.startX) / zoom, dy = (clientY - st.startY) / zoom;
+    if (Math.abs(clientX - st.startX) > 3 || Math.abs(clientY - st.startY) > 3) st.moved = true;
+    note.x = Math.round(st.originX + dx);
+    note.y = Math.round(st.originY + dy);
+    st.el.style.left = note.x + 'px';
+    st.el.style.top  = note.y + 'px';
+  } else if (st.type === 'resize') {
+    const dx = (clientX - st.startX) / zoom;
+    if (Math.abs(clientX - st.startX) > 3) st.moved = true;
+    note.w = Math.max(NOTE_MIN_W, Math.round(st.originW + dx));
+    st.el.style.width = note.w + 'px';
+  }
+}
+
+function endNoteGesture() {
+  const st = noteDragState;
+  if (!st) return;
+  st.el.classList.remove('note-dragging');
+  if (st.moved) {
+    saveNotes();
+    if (st.type === 'move' && st.el._noteSuppressClick) st.el._noteSuppressClick();
+  }
+  noteDragState = null;
+}
+
+// Global mouse move/up drive the active note gesture (so it keeps tracking even
+// if the pointer leaves the note).
+document.addEventListener('mousemove', (e) => {
+  if (noteDragState) moveNoteGesture(e.clientX, e.clientY);
+});
+document.addEventListener('mouseup', () => { if (noteDragState) endNoteGesture(); });
+
+// Double-click empty canvas to add a note there.
+viewport.addEventListener('dblclick', (e) => {
+  if (e.target !== viewport && e.target !== canvasEl) return;
+  const p = canvasPointFromEvent(e);
+  addNoteAt(p.x, p.y);
+});
+
+// Touch: double-tap empty canvas to add a note.
+let lastCanvasTap = 0;
+viewport.addEventListener('touchend', (e) => {
+  if (e.target !== viewport && e.target !== canvasEl) return;
+  if (e.changedTouches.length !== 1) return;
+  const now = Date.now();
+  if (now - lastCanvasTap < 320) {
+    lastCanvasTap = 0;
+    const t = e.changedTouches[0];
+    const rect = viewport.getBoundingClientRect();
+    const x = (t.clientX - rect.left - panX) / zoom;
+    const y = (t.clientY - rect.top - panY) / zoom;
+    addNoteAt(x, y);
+  } else {
+    lastCanvasTap = now;
+  }
+});
+
+function init() {
+  loadAll();
+  refreshZoneNameCache();
+  _zoneNamesSig = zoneNamesSignature();
+  // Re-render when the tracker/notes change custom zone names (only then, so we
+  // don't rebuild on every unrelated tracker_state save like moon counts).
+  window.addEventListener('storage', (e) => {
+    if (e.key !== TRACKER_STATE_KEY) return;
+    const sig = zoneNamesSignature();
+    if (sig === _zoneNamesSig) return;
+    _zoneNamesSig = sig;
+    fullRender();
+  });
+  migrateOldEdgeChains();
+  recomputeChainLabels();
+
+  // Sync UI with loaded settings
+  document.getElementById('grid-cols').value = gridCols;
+  toggleImages.checked = showImages;
+  toggleImagesLabel.textContent = showImages ? 'On' : 'Off';
+  arrowColorInput.value = arrowColor;
+  highlightColorInput.value = highlightColor;
+  document.documentElement.style.setProperty('--highlight-color', highlightColor);
+  toggleHighlight.checked = highlightEnabled;
+  toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
+  togglePainting.checked = paintingTracker;
+  togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
+  toggleSegmented.checked = segmentedNodes;
+  toggleSegmentedLabel.textContent = segmentedNodes ? 'On' : 'Off';
+  segmentStyleSelect.value = segmentStyle;
+  syncSegmentStyleRow();
+  toggleDecouple.checked = decoupled;
+  toggleDecoupleLabel.textContent = decoupled ? 'On' : 'Off';
+
+  // Sync new settings UI
+  arrowModeToggles.forEach(t => { t.checked = (t.dataset.mode === arrowColorMode); });
+  if (displayPositionSelect) displayPositionSelect.value = displayPosition;
+  document.querySelectorAll('[id^="toggle-kingdom-"]').forEach(t => {
+    t.checked = kingdomVisible[t.dataset.kingdom] !== false;
+  });
+
+  buildLayout();
+  canvasEl.style.width = canvasW + 'px';
+  canvasEl.style.height = canvasH + 'px';
+  applyDisplayLayout();
+  renderClusters();
+  renderNodes();
+  renderConnections();
+  renderNotes();
+  renderDisplayPanel();
+  applyTransform();
+}
+
+init();
+</script>
+</body>
+</html>
