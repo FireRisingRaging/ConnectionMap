@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SMO Connection Map</title>
+<title>Connection Map</title>
 <link rel="icon" href="connection.png">
 <style>
   :root {
@@ -945,14 +945,136 @@
       box-shadow: 0 0 0 1px var(--accent);
     }
   }
+
+  /* ── Template Editor modal ─────────────────────────────────────── */
+  #editor-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 600;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #editor-overlay.visible { display: flex; }
+  #editor-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 640px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 48px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #editor-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #editor-modal-header h2 { font-size: 0.98rem; }
+  #editor-modal-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 1.15rem; cursor: pointer; line-height: 1; padding: 0 2px;
+  }
+  #editor-modal-close:hover { color: var(--red); }
+  #editor-toolbar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card2);
+    flex-shrink: 0;
+  }
+  #editor-draft-note {
+    margin-left: auto;
+    font-size: 0.74rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  #editor-draft-note.dirty { color: var(--green); font-style: normal; }
+  #editor-modal-body {
+    padding: 14px 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #editor-groups { display: flex; flex-direction: column; gap: 14px; }
+  #editor-groups .editor-empty {
+    color: var(--text-dim); font-style: italic; text-align: center; padding: 24px 0;
+  }
+  .editor-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card2);
+    border-left: 4px solid var(--border);
+    overflow: hidden;
+  }
+  .editor-group-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+  }
+  .editor-group-head input[type="color"] {
+    width: 34px; height: 30px; padding: 0; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-card2); cursor: pointer;
+  }
+  .editor-group-name {
+    flex: 1 1 140px; min-width: 100px; height: 30px;
+    background: var(--bg-card2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--font); font-size: 0.9rem; font-weight: bold;
+    padding: 0 8px; outline: none;
+  }
+  .editor-group-name:focus, .editor-node-name:focus { border-color: var(--accent); }
+  .editor-hdr-toggle {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; color: var(--text-dim); cursor: pointer;
+    white-space: nowrap;
+  }
+  .editor-del-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: var(--radius-sm);
+    width: 28px; height: 28px; line-height: 1; cursor: pointer;
+    flex-shrink: 0; font-size: 0.9rem;
+  }
+  .editor-del-btn:hover { color: var(--red); border-color: var(--red); }
+  .editor-nodes { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .editor-node-row { display: flex; align-items: center; gap: 8px; }
+  .editor-node-name {
+    flex: 1 1 auto; min-width: 0; height: 28px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--font); font-size: 0.83rem; padding: 0 8px; outline: none;
+  }
+  .editor-deadend-toggle {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.74rem; color: var(--text-dim); cursor: pointer; white-space: nowrap;
+  }
+  .editor-add-node {
+    align-self: flex-start;
+    background: var(--btn-bg); border: none; color: var(--text-dim);
+    font-family: var(--font); font-size: 0.78rem;
+    padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+    margin-top: 2px;
+  }
+  .editor-add-node:hover { background: var(--btn-hover); color: var(--text); }
 </style>
 </head>
 <body>
 <div id="app">
 
   <div id="topbar">
-    <h1>SMO Connection Map</h1>
+    <h1>Connection Map</h1>
     <button class="map-btn" id="btn-controls">Info & Controls</button>
+    <button class="map-btn" id="btn-editor">Edit Template</button>
     <button class="map-btn" id="btn-settings">Settings</button>
     <button class="map-btn active" id="btn-display">Hide Display</button>
     <div class="topbar-sep"></div>
@@ -965,16 +1087,15 @@
     <div class="controls-desktop">
     <strong>Controls</strong>
     <ul>
-      <li><strong>Left Mouse Button</strong> hold and drag a zone/kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Kingdom nodes are never split, so arrows meet them anywhere along their border. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
+      <li><strong>Left Mouse Button</strong> hold and drag a node to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+      <li><strong>With Segmented Nodes on</strong>, the arrow attaches to whichever part you started on and whichever part you released on (entrance, name, or exit). Only the segment under the cursor lights up as you drag. Group headers are never split, so arrows meet them anywhere along their border. Two nodes can hold several arrows as long as each uses a different pair of parts.</li>
       <li><strong>Single-click a node</strong> to highlight every chain going in and out of it, each chain in its own color. Click it again (or empty canvas) to clear.</li>
       <li><strong>Double Left Mouse Button</strong> on a node to remove ALL of its outgoing arrows at once.</li>
       <li><strong>Double-click an arrow</strong> to remove just that connection and split its chain (the part after the break becomes a new chain).</li>
       <li><strong>Click an arrow</strong> on the map (or a path in the Display panel) to highlight that path on both; click again to unhighlight.</li>
-      <li><strong>Middle Mouse Button</strong> to mark/unmark a stage green. <strong>Right Mouse Button</strong> to mark/unmark a stage red.</li>
-      <li><strong>Drag the panel background or kingdom header</strong> to move a kingdom panel.</li>
-      <li><strong>Triangle handle</strong> (bottom-right of each panel) to resize it. Zones reflow automatically in that space.</li>
-      <li><strong>Hold for 1 second</strong> on a node (with Stage Previews on) to view its loading zone screenshot.</li>
+      <li><strong>Middle Mouse Button</strong> to mark/unmark a node green. <strong>Right Mouse Button</strong> to mark/unmark a node red.</li>
+      <li><strong>Drag the panel background</strong> to move a group panel.</li>
+      <li><strong>Triangle handle</strong> (bottom-right of each panel) to resize it. Nodes reflow automatically in that space.</li>
       <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. It moves and it never resizes. Dragging anywhere else on the node still draws an arrow.</li>
       <li><strong>Hover</strong> over an arrow to see what letter chain it is part of.</li>
       <li><strong>Single-click</strong> an arrow to view its chain and what chain it can be linked to or add it to a new chain.</li>
@@ -985,22 +1106,22 @@
     <div class="controls-mobile">
       <strong>Controls</strong>
       <ul>
-        <li><strong>Hold and drag</strong> any zone or kingdom to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
-        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit). Kingdom nodes stay whole.</li>
+        <li><strong>Hold and drag</strong> any node to draw a connection arrow. A node can have any number of outgoing and incoming arrows.</li>
+        <li><strong>With Segmented Nodes on</strong>, the arrow attaches to the part you started on and the part you lifted off on (entrance, name, or exit). Group headers stay whole.</li>
         <li><strong>Double-tap</strong> a node to remove ALL of its outgoing arrows at once.</li>
         <li><strong>Tap a path</strong> in the Display panel to highlight it on the map; tap again to unhighlight.</li>
         <li><strong>Single tap</strong> a node to cycle its color: green → red → none.</li>
         <li><strong>Tap once</strong> a panel's empty background to select it (border lights up), then <strong>drag</strong> from that background to move it. Deactivates automatically when you lift your finger.</li>
-        <li><strong>Triangle handle</strong> (bottom-right of each panel): drag to resize it. Zones reflow automatically.</li>
+        <li><strong>Triangle handle</strong> (bottom-right of each panel): drag to resize it. Nodes reflow automatically.</li>
         <li><strong>Node triangle</strong> (bottom-right of each node, Decouple only): drag it to move that node on its own. Dragging anywhere else still draws an arrow.</li>
-        <li><strong>Hold for 1 second</strong> on a node without moving (Stage Previews must be on) to view its loading zone screenshot. Moving your finger cancels it and starts a connection drag instead.</li>
         <li>Pinch to zoom, drag empty canvas to pan.</li>
       </ul>
     </div>
     <!-- Info same on all devices -->
     <strong>Info</strong>
     <ul>
-      <li>The <strong>striped loading zones</strong> represent one-ways, one entrance in or out.</li>
+      <li>The <strong>striped nodes</strong> are dead ends: they only accept one incoming arrow. Toggle any node's dead-end flag in the Template Editor.</li>
+      <li>Build your own map for any game in <strong>Edit Template</strong>: add groups and nodes, set colors, choose which headers can connect, then Apply. You can also download the template as JSON, edit it, and upload it back.</li>
     </ul>
   </div>
 
@@ -1041,8 +1162,20 @@
     <div id="settings-modal-body">
 
       <div class="settings-row">
+        <div class="settings-row-label">Template</div>
+        <div class="settings-row-desc">Edit the groups and nodes for your game. You can also download the template as a JSON file, edit it elsewhere, and upload it back (uploading replaces the current map and clears all connections).</div>
+        <div class="settings-row-control">
+          <button class="map-btn" id="btn-open-editor-settings">Edit Template</button>
+          <button class="map-btn" id="btn-download-template-settings">Download JSON</button>
+          <button class="map-btn" id="btn-upload-template-settings">Upload JSON</button>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-row">
         <div class="settings-row-label">Grid Layout</div>
-        <div class="settings-row-desc">Set how many columns to arrange kingdom panels in. Rows are calculated automatically. Resets any manual panel positions and sizes.</div>
+        <div class="settings-row-desc">Set how many columns to arrange group panels in. Rows are calculated automatically. Resets any manual panel positions and sizes.</div>
         <div class="settings-row-control">
           <input type="number" id="grid-cols" min="1" max="15" value="4" title="Columns">
           <span class="x-sep">cols</span>
@@ -1053,40 +1186,8 @@
       <div class="settings-divider"></div>
 
       <div class="settings-row">
-        <div class="settings-row-label">Stage Previews</div>
-        <div class="settings-row-desc">Click and hold any kingdom or zone node to view its loading zone screenshot.</div>
-        <div class="settings-row-control">
-          <label class="toggle-wrap" for="toggle-images">
-            <span class="toggle-switch">
-              <input type="checkbox" id="toggle-images">
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label" id="toggle-images-label">Off</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="settings-divider"></div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">Painting Tracker</div>
-        <div class="settings-row-desc">Adds a Paintings section. Paintings only connect to other paintings, show at the top of the Display, and have white arrows.</div>
-        <div class="settings-row-control">
-          <label class="toggle-wrap" for="toggle-painting">
-            <span class="toggle-switch">
-              <input type="checkbox" id="toggle-painting">
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label" id="toggle-painting-label">Off</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="settings-divider"></div>
-
-      <div class="settings-row">
         <div class="settings-row-label">Segmented Nodes</div>
-        <div class="settings-row-desc">Splits every zone node into an entrance segment on the left and an exit segment on the right. Kingdom nodes are left whole. </div>
+        <div class="settings-row-desc">Splits every node into an entrance segment on the left and an exit segment on the right. Group headers are left whole. </div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-segmented">
             <span class="toggle-switch">
@@ -1112,7 +1213,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label">Decouple</div>
-        <div class="settings-row-desc">Frees every node from its kingdom panel so it can be placed anywhere on the map. Each node gets a small triangle in its bottom-right corner: drag that to move the node; dragging anywhere else still draws an arrow. The triangle does not resize nodes.</div>
+        <div class="settings-row-desc">Frees every node from its group panel so it can be placed anywhere on the map. Each node gets a small triangle in its bottom-right corner: drag that to move the node; dragging anywhere else still draws an arrow. The triangle does not resize nodes.</div>
         <div class="settings-row-control">
           <label class="toggle-wrap" for="toggle-decouple">
             <span class="toggle-switch">
@@ -1157,12 +1258,12 @@
         </div>
 
         <div class="arrow-color-option">
-          <label class="toggle-wrap" for="toggle-kingdom-gradients">
+          <label class="toggle-wrap" for="toggle-group-gradients">
             <span class="toggle-switch">
-              <input type="checkbox" id="toggle-kingdom-gradients" data-mode="gradient">
+              <input type="checkbox" id="toggle-group-gradients" data-mode="gradient">
               <span class="toggle-track"></span>
             </span>
-            <span class="toggle-label">Kingdom Gradients</span>
+            <span class="toggle-label">Group Gradients</span>
           </label>
         </div>
       </div>
@@ -1189,33 +1290,6 @@
       <div class="settings-divider"></div>
 
       <div class="settings-row">
-        <div class="settings-row-label">Kingdoms</div>
-        <div class="settings-row-desc">Toggle whether a kingdom (and its zones) appears on the map. Any arrows connected to a hidden kingdom are removed from view until it's shown again.</div>
-
-        <div class="arrow-color-option">
-          <label class="toggle-wrap" for="toggle-kingdom-Moon">
-            <span class="toggle-switch">
-              <input type="checkbox" id="toggle-kingdom-Moon" data-kingdom="Moon" checked>
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label">Moon Kingdom</span>
-          </label>
-        </div>
-
-        <div class="arrow-color-option">
-          <label class="toggle-wrap" for="toggle-kingdom-Cloud">
-            <span class="toggle-switch">
-              <input type="checkbox" id="toggle-kingdom-Cloud" data-kingdom="Cloud" checked>
-              <span class="toggle-track"></span>
-            </span>
-            <span class="toggle-label">Cloud Kingdom</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="settings-divider"></div>
-
-      <div class="settings-row">
         <div class="settings-row-label">Display Panel Position</div>
         <div class="settings-row-desc">Choose where the chain display panel appears relative to the map canvas.</div>
         <div class="settings-row-control">
@@ -1232,16 +1306,26 @@
   </div>
 </div>
 
-<!-- Zone Image Viewer -->
-<div id="image-viewer">
-  <div id="image-viewer-header">
-    <span id="image-viewer-title">Zone Name</span>
-    <button id="image-viewer-close" title="Close">✕</button>
+<!-- Template Editor modal -->
+<div id="editor-overlay">
+  <div id="editor-modal">
+    <div id="editor-modal-header">
+      <h2>Template Editor</h2>
+      <button id="editor-modal-close" title="Close">✕</button>
+    </div>
+    <div id="editor-toolbar">
+      <button class="map-btn" id="editor-add-group">+ Add Group</button>
+      <button class="map-btn" id="editor-download">Download JSON</button>
+      <button class="map-btn" id="editor-upload">Upload JSON</button>
+      <button class="map-btn danger" id="editor-clear">Clear</button>
+      <span id="editor-draft-note"></span>
+      <button class="map-btn active" id="editor-apply">Apply to Map</button>
+      <input type="file" id="editor-file-input" accept="application/json,.json" style="display:none">
+    </div>
+    <div id="editor-modal-body">
+      <div id="editor-groups"></div>
+    </div>
   </div>
-  <div id="image-viewer-body">
-    <!-- content injected by JS -->
-  </div>
-  <div id="image-viewer-resize" title="Drag to resize"></div>
 </div>
 
 <script>
@@ -1252,306 +1336,89 @@
 // ─────────────────────────────────────────────────────────────────
 const IS_MOBILE = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
-// Per-open zoom/pan state for the mobile image viewer
-let mobileImgScale = 1, mobileImgPanX = 0, mobileImgPanY = 0;
-
-function resetMobileImgZoom() {
-  mobileImgScale = 1; mobileImgPanX = 0; mobileImgPanY = 0;
-  const img = document.querySelector('#image-viewer-body img');
-  if (img) img.style.transform = '';
-}
-
-function applyMobileImgTransform() {
-  const img = document.querySelector('#image-viewer-body img');
-  if (!img) return;
-  img.style.transformOrigin = 'center center';
-  img.style.transform = `translate(${mobileImgPanX}px,${mobileImgPanY}px) scale(${mobileImgScale})`;
-}
+// (Mobile image-viewer zoom helpers removed.)
 
 // ─────────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────────
-const LOADING_ZONES_TEMPLATE = {
-  'Cap':       { color: '#fff500', icon: 'Cap.png',     zones: { 'Orange': {}, 'Paragoomba': {}, 'Frog': {}, 'Rolling On': {} } },
-  'Cascade':   { color: '#ff9900', icon: 'Cascade.png', zones: { 'Dino': {}, '2D': {}, 'Chain Chomp': {}, 'Swings': {}, 'Windy': {} } },
-  'Sand':      { color: '#8bf12c', icon: 'Sand.png',    zones: { "Icy Cave": {}, "Moe-eye": {}, "Shop": {}, "Employees": {}, "Slots": {}, "Rumble": {}, "Outfit": {}, "Jaxi Ruins": {}, "Bullet Bill": {}, "Gushen": {}, "Sphynx": {}, "Moving Platform": {}, "Rocket": {}, "Colossal Ruins": {} } },
-  'Lake':      { color: '#e46cab', icon: 'Lake.png',    zones: { "Poison Waves": {}, "Zipper": {}, "Grab Climb": {}, "Shop": {}, "Puzzle": {} } },
-  'Wooded':    { color: '#1e65e7', icon: 'Wooded.png',  zones: { "DW Odyssey": {}, "DW Red Maze": {}, "DW Pond": {}, "DW Treasure": {}, "DW Outfit": {}, "Rocket": {}, "Sheep": {}, "Tank": {}, "Vine Clouds": {}, "Breakdown": {}, "Invisible": {}, "Flooded Pipes": {}, "Flower Road": {}, "Treasure Room": {} } },
-  'Lost':      { color: '#e71edd', icon: 'Lost.png',    zones: { 'Wiggler': {}, 'Shop': {}, 'Klepto': {} } },
-  'Metro':     { color: '#de7d5e', icon: 'Metro.png',   zones: { "Yellow Shop": {}, "Purple Shop": {}, "Dino": {}, "Bullet Billding": {}, "Taxi": {}, "Notes": {}, "2D": {}, "Slots": {}, "People": {}, "Outfit": {}, "Rocket": {}, "Dark": {}, "Scaffolding": {}, "Scooter": {}, "Rotating Maze": {}, "RC Car": {} } },
-  'Snow':      { color: '#e7930a', icon: 'Snow.png',    zones: { "Puzzle": {}, "Capless": {}, "Rocket Flower": {}, "Iceburn Circuit": {}, "Flower Road": {}, "Tracewalking": {}, "Clouds": {}, "Outfit": {}, "Shop": {} } },
-  'Seaside':   { color: '#b36fe9', icon: 'Seaside.png', zones: { "Well Enter": {}, "Well Exit": {}, "Rumble": {}, "Rocket": {}, "Outfit": {}, "Gushen": {}, "Sphynx": {}, "Pokio": {}, "Lava Rising": {}, "Sandy Bottom": {}, "Spinning Maze": {} } },
-  'Luncheon':  { color: '#3fddbb', icon: 'Luncheon.png',zones: { "Magma Swamp": {}, "Forks": {}, "Cheese Rocks": {}, "Veggie Room": {}, "Slots": {}, "Shop": {}, "Outfit": {}, "Spinning Athletics": {}, "Lava Islands": {}, "Volcano Cave": {}, "Gears": {}, "Magma Path": {} } },
-  'Ruined':    { color: '#ffd7e2', icon: 'Ruin.png',    zones: { "Chargin' Chuck": {}, 'Rocket': {} } },
-  "Bowser's":  { color: '#d3304c', icon: 'Bowser.png',  zones: { "Jizo": {}, "Shop": {}, "Outfit": {}, "Treasure Room": {}, "Spinning Tower": {}, "Vine Clouds": {}, "Hexagon Tower": {}, "Wooden Tower": {} } },
-  'Mushroom':  { color: '#fff672', icon: 'Star.png',    zones: { "Shop": {}, "Castle Door": {}, "Outfit": {}, "Cloud Sea": {}, "Well": {}, "Knucklotec": {}, "Torkdrift": {}, "Mechawiggler": {}, "Octopus": {}, "Cookatiel": {}, "Dragon": {}, "Rocket": {} } },
-  'Darkside':  { color: '#fff2c6', icon: 'Dark.png',    zones: { 'Breakdown': {}, 'Invisible': {}, 'Vanishing': {}, 'Yoshi Siege': {}, 'Lava Rising': {}, 'Magma Swamp': {} } },
-  'Darkerside':{ color: '#fff2c6', icon: 'Dark.png',    zones: { 'End': {} } },
-  'Moon':      { color: '#b5c1cb', icon: 'MoonK.png',   zones: { '2D Snowman': {}, 'Shop': {}, 'Swings': {}, 'Sphynx': {}} },
-  'Cloud':     { color: '#65ceff', icon: 'Cloud.png',   zones: { '2D Cube': {}, 'Picture Match': {} } },
-};
+const DEFAULT_TEMPLATE = {"version":1,"groups":[{"name":"Cap","color":"#fff500","headerConnectable":true,"nodes":[{"name":"Orange"},{"name":"Paragoomba"},{"name":"Frog"},{"name":"Rolling On"}]},{"name":"Cascade","color":"#ff9900","headerConnectable":true,"nodes":[{"name":"Dino","deadEnd":true},{"name":"2D"},{"name":"Chain Chomp"},{"name":"Swings"},{"name":"Windy"}]},{"name":"Sand","color":"#8bf12c","headerConnectable":true,"nodes":[{"name":"Icy Cave"},{"name":"Moe-eye"},{"name":"Shop","deadEnd":true},{"name":"Employees","deadEnd":true},{"name":"Slots","deadEnd":true},{"name":"Rumble","deadEnd":true},{"name":"Outfit","deadEnd":true},{"name":"Jaxi Ruins"},{"name":"Bullet Bill"},{"name":"Gushen"},{"name":"Sphynx","deadEnd":true},{"name":"Moving Platform"},{"name":"Rocket"},{"name":"Colossal Ruins","deadEnd":true}]},{"name":"Lake","color":"#e46cab","headerConnectable":true,"nodes":[{"name":"Poison Waves"},{"name":"Zipper","deadEnd":true},{"name":"Grab Climb"},{"name":"Shop","deadEnd":true},{"name":"Puzzle","deadEnd":true}]},{"name":"Wooded","color":"#1e65e7","headerConnectable":true,"nodes":[{"name":"DW Odyssey"},{"name":"DW Red Maze"},{"name":"DW Pond"},{"name":"DW Treasure","deadEnd":true},{"name":"DW Outfit","deadEnd":true},{"name":"Rocket"},{"name":"Sheep","deadEnd":true},{"name":"Tank"},{"name":"Vine Clouds","deadEnd":true},{"name":"Breakdown","deadEnd":true},{"name":"Invisible"},{"name":"Flooded Pipes"},{"name":"Flower Road"},{"name":"Treasure Room"}]},{"name":"Lost","color":"#e71edd","headerConnectable":true,"nodes":[{"name":"Wiggler"},{"name":"Shop","deadEnd":true},{"name":"Klepto","deadEnd":true}]},{"name":"Metro","color":"#de7d5e","headerConnectable":true,"nodes":[{"name":"Yellow Shop","deadEnd":true},{"name":"Purple Shop","deadEnd":true},{"name":"Dino"},{"name":"Bullet Billding"},{"name":"Taxi"},{"name":"Notes","deadEnd":true},{"name":"2D","deadEnd":true},{"name":"Slots","deadEnd":true},{"name":"People"},{"name":"Outfit"},{"name":"Rocket"},{"name":"Dark","deadEnd":true},{"name":"Scaffolding"},{"name":"Scooter"},{"name":"Rotating Maze","deadEnd":true},{"name":"RC Car","deadEnd":true}]},{"name":"Snow","color":"#e7930a","headerConnectable":true,"nodes":[{"name":"Puzzle","deadEnd":true},{"name":"Capless"},{"name":"Rocket Flower"},{"name":"Iceburn Circuit","deadEnd":true},{"name":"Flower Road"},{"name":"Tracewalking","deadEnd":true},{"name":"Clouds","deadEnd":true},{"name":"Outfit","deadEnd":true},{"name":"Shop","deadEnd":true}]},{"name":"Seaside","color":"#b36fe9","headerConnectable":true,"nodes":[{"name":"Well Enter"},{"name":"Well Exit"},{"name":"Rumble","deadEnd":true},{"name":"Rocket"},{"name":"Outfit","deadEnd":true},{"name":"Gushen"},{"name":"Sphynx","deadEnd":true},{"name":"Pokio"},{"name":"Lava Rising"},{"name":"Sandy Bottom","deadEnd":true},{"name":"Spinning Maze","deadEnd":true}]},{"name":"Luncheon","color":"#3fddbb","headerConnectable":true,"nodes":[{"name":"Magma Swamp"},{"name":"Forks"},{"name":"Cheese Rocks","deadEnd":true},{"name":"Veggie Room","deadEnd":true},{"name":"Slots","deadEnd":true},{"name":"Shop","deadEnd":true},{"name":"Outfit"},{"name":"Spinning Athletics"},{"name":"Lava Islands"},{"name":"Volcano Cave"},{"name":"Gears"},{"name":"Magma Path"}]},{"name":"Ruined","color":"#ffd7e2","headerConnectable":true,"nodes":[{"name":"Chargin' Chuck"},{"name":"Rocket"}]},{"name":"Bowser's","color":"#d3304c","headerConnectable":true,"nodes":[{"name":"Jizo"},{"name":"Shop","deadEnd":true},{"name":"Outfit","deadEnd":true},{"name":"Treasure Room","deadEnd":true},{"name":"Spinning Tower"},{"name":"Vine Clouds","deadEnd":true},{"name":"Hexagon Tower","deadEnd":true},{"name":"Wooden Tower"}]},{"name":"Mushroom","color":"#fff672","headerConnectable":true,"nodes":[{"name":"Shop","deadEnd":true},{"name":"Castle Door","deadEnd":true},{"name":"Outfit","deadEnd":true},{"name":"Cloud Sea","deadEnd":true},{"name":"Well","deadEnd":true},{"name":"Knucklotec","deadEnd":true},{"name":"Torkdrift","deadEnd":true},{"name":"Mechawiggler","deadEnd":true},{"name":"Octopus","deadEnd":true},{"name":"Cookatiel","deadEnd":true},{"name":"Dragon","deadEnd":true},{"name":"Rocket","deadEnd":true}]},{"name":"Darkside","color":"#fff2c6","headerConnectable":true,"nodes":[{"name":"Breakdown","deadEnd":true},{"name":"Invisible"},{"name":"Vanishing"},{"name":"Yoshi Siege"},{"name":"Lava Rising"},{"name":"Magma Swamp"}]},{"name":"Darkerside","color":"#fff2c6","headerConnectable":true,"nodes":[{"name":"End","deadEnd":true}]}]};
 
 // ─────────────────────────────────────────────────────────────────
-// Painting tracker (optional section, toggled in Settings, default off)
-// A single "Paintings" section placed before Cascade in the grid. Each entry
-// is one kingdom's painting. Paintings only connect to other paintings, may
-// fan out to several, and their chains are drawn with white arrows, listed at
-// the top of the Display panel with no letters.
+// Editable template system
 // ─────────────────────────────────────────────────────────────────
-const PAINTINGS_KEY = 'Paintings';
-const PAINTING_KINGDOMS = ['Cascade','Sand','Lake','Wooded','Metro','Snow','Seaside','Luncheon',"Bowser's",'Mushroom'];
+// The whole map is driven by a single editable "template": an ordered list of
+// groups, each with a color, a header-connectable flag, and an ordered list of
+// nodes (each with a name and a dead-end flag). The template can be edited in
+// the in-app editor, auto-saved as a draft, and exported / imported as JSON.
+//
+// Downstream code still reads two derived structures rebuilt by applyTemplate():
+//   LOADING_ZONES_TEMPLATE : { groupName: { color, icon:'', zones: { nodeName:{} } } }
+//   DEAD_END_IDS           : Set of 'zone:Group:Node' ids
+// plus HEADER_NOCONNECT (group names whose header cannot make connections) and
+// groupOrder (render order).
+let template = null;
+let LOADING_ZONES_TEMPLATE = {};
+let DEAD_END_IDS = new Set();
+let HEADER_NOCONNECT = new Set();
+let groupOrder = [];
 
-/** Synthetic section template for the Paintings cluster. */
-function paintingsSectionTemplate() {
-  const zones = {};
-  PAINTING_KINGDOMS.forEach(k => { zones[k] = {}; });
-  return { color: '#e6e6ee', icon: 'Painting.png', zones };
+function cloneTemplate(t) { return JSON.parse(JSON.stringify(t)); }
+
+/** Rebuild the derived structures from the current . */
+function applyTemplate() {
+  LOADING_ZONES_TEMPLATE = {};
+  DEAD_END_IDS = new Set();
+  HEADER_NOCONNECT = new Set();
+  groupOrder = [];
+  const groups = (template && Array.isArray(template.groups)) ? template.groups : [];
+  groups.forEach(g => {
+    let name = (g.name && String(g.name).trim()) ? String(g.name).trim() : 'Group';
+    // De-duplicate group names (they become node-id prefixes and must be unique)
+    if (LOADING_ZONES_TEMPLATE[name]) {
+      const base = name; let k = 2;
+      while (LOADING_ZONES_TEMPLATE[name]) name = base + ' ' + (k++);
+    }
+    const zones = {};
+    (Array.isArray(g.nodes) ? g.nodes : []).forEach(nd => {
+      let nm = (nd && nd.name && String(nd.name).trim()) ? String(nd.name).trim() : 'Node';
+      if (zones[nm]) { const b = nm; let j = 2; while (zones[nm]) nm = b + ' ' + (j++); }
+      zones[nm] = {};
+      if (nd && nd.deadEnd) DEAD_END_IDS.add(`zone:${name}:${nm}`);
+    });
+    LOADING_ZONES_TEMPLATE[name] = { color: (g.color || '#888888'), icon: '', zones };
+    if (g.headerConnectable === false) HEADER_NOCONNECT.add(name);
+    groupOrder.push(name);
+  });
 }
 
-/** Returns {color, icon, zones} for any section key (real kingdom or Paintings). */
-function sectionTemplate(key) {
-  return key === PAINTINGS_KEY ? paintingsSectionTemplate() : LOADING_ZONES_TEMPLATE[key];
-}
+/** Returns {color, icon, zones} for a group key. */
+function sectionTemplate(key) { return LOADING_ZONES_TEMPLATE[key]; }
 
-/** True if a node id belongs to the Paintings section. */
-function isPaintingNode(id) {
-  return typeof id === 'string' && (id === `kingdom:${PAINTINGS_KEY}` || id.startsWith(`zone:${PAINTINGS_KEY}:`));
-}
+/** Painting tracker was removed; kept as a stub so old code paths stay inert. */
+function isPaintingNode() { return false; }
+function isPaintingChain() { return false; }
 
-/** True if a node id is a kingdom (main stage) node rather than a zone. */
+/** True if a node id is a group (header) node rather than a zone. */
 function isKingdomNode(id) {
   return typeof id === 'string' && id.startsWith('kingdom:');
 }
 
-/**
- * True if a node is eligible for in/out segments at all. Paintings and kingdom
- * nodes are never split: arrows meet them anywhere along their border.
- */
+/** True if a node may be split into in/out segments (zone nodes only). */
 function canSegment(id) {
-  return !isPaintingNode(id) && !isKingdomNode(id);
+  return !isKingdomNode(id);
 }
 
-/** True if a chain id is a painting chain (any of its edges is a painting edge). */
-function isPaintingChain(cid) {
-  if (cid === undefined || cid === null) return false;
-  for (const [key, c] of Object.entries(edgeChains)) {
-    if (c === cid) {
-      const arrowPos = key.indexOf('→');
-      if (arrowPos !== -1) return isPaintingNode(key.substring(0, arrowPos));
-    }
-  }
-  return false;
+/** True if the group header for this node id is allowed to make connections. */
+function headerConnectable(id) {
+  if (!isKingdomNode(id)) return true;
+  const n = nodes[id];
+  return n ? !HEADER_NOCONNECT.has(n.kingdomKey) : true;
 }
 
-const DEAD_END_IDS = new Set([
-  ['Cascade','Dino'],['Sand','Shop'],['Sand','Employees'],['Sand','Slots'],['Sand','Rumble'],
-  ['Sand','Outfit'],['Sand','Sphynx'],['Sand','Colossal Ruins'],['Lake','Zipper'],
-  ['Lake','Shop'],['Lake','Puzzle'],['Wooded','DW Treasure'],['Wooded','DW Outfit'],
-  ['Wooded','Sheep'],['Wooded','Vine Clouds'],['Wooded','Breakdown'],['Lost','Shop'],
-  ['Lost','Klepto'],['Metro','Yellow Shop'],['Metro','Purple Shop'],['Metro','Notes'],
-  ['Metro','2D'],['Metro','Slots'],['Metro','Dark'],['Metro','Rotating Maze'],['Metro','RC Car'],
-  ['Snow','Puzzle'],['Snow','Iceburn Circuit'],['Snow','Tracewalking'],['Snow','Clouds'],
-  ['Snow','Outfit'],['Snow','Shop'],['Seaside','Rumble'],['Seaside','Outfit'],
-  ['Seaside','Sphynx'],['Seaside','Sandy Bottom'],['Seaside','Spinning Maze'],
-  ['Luncheon','Cheese Rocks'],['Luncheon','Veggie Room'],['Luncheon','Slots'],['Luncheon','Shop'],
-  ["Bowser's",'Shop'],["Bowser's",'Outfit'],["Bowser's",'Treasure Room'],["Bowser's",'Vine Clouds'],
-  ["Bowser's",'Hexagon Tower'],['Mushroom','Shop'],['Mushroom','Castle Door'],['Mushroom','Outfit'],
-  ['Mushroom','Cloud Sea'],['Mushroom','Well'],['Mushroom','Knucklotec'],['Mushroom','Torkdrift'],
-  ['Mushroom','Mechawiggler'],['Mushroom','Octopus'],['Mushroom','Cookatiel'],['Mushroom','Dragon'],
-  ['Mushroom','Rocket'],['Darkside','Breakdown'],['Darkerside','End'],['Cloud','2D Cube'],['Cloud','Picture Match'],
-  ['Moon','Shop'],['Moon','Sphynx']
-].map(([k,z]) => `zone:${k}:${z}`));
+// (Old hardcoded dead-end list removed; dead-ends now come from the template.)
 
-// ─────────────────────────────────────────────────────────────────
-// Zone → screenshot image mapping
-// Base URL: https://raw.githubusercontent.com/Amethyst-szs/smo-thumbnail-database/main/high/
-// Filenames follow internal SMO stage names (.jpg)
-// null = no image found (TODO)
-// ─────────────────────────────────────────────────────────────────
-const BASE_IMG = 'https://raw.githubusercontent.com/Amethyst-szs/smo-thumbnail-database/main/high/';
+// (Stage-preview image mapping removed with the modular rewrite.)
 
-const ZONE_IMAGES = {
-  // Kingdoms (main stages)
-  'kingdom:Cap':        'CapWorldHomeStage.jpg',
-  'kingdom:Cascade':    'WaterfallWorldHomeStage.jpg',
-  'kingdom:Sand':       'SandWorldHomeStage.jpg',
-  'kingdom:Lake':       'LakeWorldHomeStage.jpg',
-  'kingdom:Wooded':     'ForestWorldHomeStage_1.jpg',
-  'kingdom:Lost':       'ClashWorldHomeStage.jpg',
-  'kingdom:Metro':      'CityWorldHomeStage.jpg',
-  'kingdom:Snow':       'SnowWorldHomeStage.jpg',
-  'kingdom:Seaside':    'SeaWorldHomeStage.jpg',
-  'kingdom:Luncheon':   'LavaWorldHomeStage.jpg',
-  'kingdom:Ruined':     'BossRaidWorldHomeStage.jpg',
-  "kingdom:Bowser's":   'SkyWorldHomeStage.jpg',
-  'kingdom:Mushroom':   'PeachWorldHomeStage.jpg',
-  'kingdom:Darkside':   'Special1WorldHomeStage.jpg',
-  'kingdom:Darkerside': 'Special2WorldHomeStage.jpg',
-  'kingdom:Moon':       'MoonWorldHomeStage_2.jpg',
-  'kingdom:Cloud':      'CloudWorldHomeStage.jpg',
-
-  // Cap zones
-  'zone:Cap:Orange':       'PushBlockExStage.jpg',
-  'zone:Cap:Paragoomba':   'PoisonWaveExStage.jpg',
-  'zone:Cap:Frog':         'FrogSearchExStage.jpg',
-  'zone:Cap:Rolling On':   'RollingExStage.jpg',
-
-  // Cascade zones
-  'zone:Cascade:Dino':       'TrexPoppunExStage.jpg',
-  'zone:Cascade:2D':         'Lift2DExStage.jpg',
-  'zone:Cascade:Chain Chomp':'WanwanClashExStage.jpg',
-  'zone:Cascade:Swings':     'CapAppearExStage.jpg',
-  'zone:Cascade:Windy':      'WindBlowExStage.jpg',
-
-  // Sand zones
-  'zone:Sand:Icy Cave':       'SandWorldPressExStage.jpg',
-  'zone:Sand:Moe-eye':        'SandWorldMeganeExStage.jpg',
-  'zone:Sand:Shop':           'SandWorldShopStage.jpg',
-  'zone:Sand:Employees':      'SandWorldShopStage.jpg',
-  'zone:Sand:Slots':          'SandWorldSlotStage.jpg',
-  'zone:Sand:Rumble':         'SandWorldVibrationStage.jpg',
-  'zone:Sand:Outfit':         'SandWorldCostumeStage.jpg',
-  'zone:Sand:Jaxi Ruins':     'SandWorldSphinxExStage.jpg',
-  'zone:Sand:Bullet Bill':    'SandWorldKillerExStage.jpg',
-  'zone:Sand:Gushen':         'WaterTubeExStage.jpg',
-  'zone:Sand:Sphynx':         'SandWorldSecretStage.jpg',
-  'zone:Sand:Moving Platform':'MeganeLiftExStage.jpg',
-  'zone:Sand:Rocket':         'SandWorldRotateExStage.jpg',
-  'zone:Sand:Colossal Ruins': 'RocketFlowerExStage.jpg',
-
-  // Lake zones
-  'zone:Lake:Poison Waves':  'FrogPoisonExStage.jpg',
-  'zone:Lake:Zipper':        'FastenerExStage.jpg',
-  'zone:Lake:Grab Climb':    'TrampolineWallCatchExStage.jpg',
-  'zone:Lake:Shop':          'LakeWorldShopStage.jpg',
-  'zone:Lake:Puzzle':        'GotogotonExStage.jpg',
-
-  // Wooded zones
-  'zone:Wooded:DW Odyssey':   'ForestWorldHomeStage_6.jpg',
-  'zone:Wooded:DW Red Maze':  'ForestWorldWoodsStage.jpg',
-  'zone:Wooded:DW Pond':      'ForestWorldHomeStage_3.jpg',
-  'zone:Wooded:DW Treasure':  'ForestWorldWoodsTreasureStage.jpg',
-  'zone:Wooded:DW Outfit':    'ForestWorldWoodsCostumeStage.jpg',
-  'zone:Wooded:Rocket':       'FogMountainExStage.jpg',
-  'zone:Wooded:Sheep':        'AnimalChaseExStage.jpg',
-  'zone:Wooded:Tank':         'ShootingElevatorExStage.jpg',
-  'zone:Wooded:Vine Clouds':  'ForestWorldCloudBonusExStage.jpg',
-  'zone:Wooded:Breakdown':    'KillerRoadExStage.jpg',
-  'zone:Wooded:Invisible':    'PackunPoisonExStage.jpg',
-  'zone:Wooded:Flooded Pipes':'ForestWorldWaterExStage.jpg',
-  'zone:Wooded:Flower Road':  'RailCollisionExStage.jpg',
-  'zone:Wooded:Treasure Room':'ForestWorldBonusStage.jpg',
-
-  // Lost zones
-  'zone:Lost:Wiggler':  'ImomuPoisonExStage.jpg',
-  'zone:Lost:Shop':     'ClashWorldShopStage.jpg',
-  'zone:Lost:Klepto':   'JangoExStage.jpg',
-
-  // Metro zones
-  'zone:Metro:Yellow Shop':    'CityWorldShop01Stage.jpg',
-  'zone:Metro:Purple Shop':    'CityWorldShop01Stage.jpg',
-  'zone:Metro:Dino':           'TrexBikeExStage.jpg',
-  'zone:Metro:Bullet Billding':'PoleKillerExStage.jpg',
-  'zone:Metro:Taxi':           'ShootingCityExStage.jpg',
-  'zone:Metro:Notes':          'Note2D3DRoomExStage.jpg',
-  'zone:Metro:2D':             'Theater2DExStage.jpg',
-  'zone:Metro:Slots':          'CityWorldSandSlotStage.jpg',
-  'zone:Metro:People':         'CityPeopleRoadStage.jpg',
-  'zone:Metro:Outfit':         'ElectricWireExStage.jpg',
-  'zone:Metro:Rocket':         'PoleGrabCeilExStage.jpg',
-  'zone:Metro:Dark':           'DonsukeExStage.jpg',
-  'zone:Metro:Scaffolding':    'SwingSteelExStage.jpg',
-  'zone:Metro:Scooter':        'BikeSteelExStage.jpg',
-  'zone:Metro:Rotating Maze':  'CapRotatePackunExStage.jpg',
-  'zone:Metro:RC Car':         'RadioControlExStage.jpg',
-
-  // Snow zones
-  'zone:Snow:Puzzle':        'ByugoPuzzleExStage.jpg',
-  'zone:Snow:Capless':       'IceWaterBlockExStage.jpg',
-  'zone:Snow:Rocket Flower': 'IceWaterDashExStage.jpg',
-  'zone:Snow:Iceburn':       'SnowWorldLobby001Stage.jpg',
-  'zone:Snow:Flower Road':   'KillerRailCollisionExStage.jpg',
-  'zone:Snow:Tracewalking':  'IceWalkerExStage.jpg',
-  'zone:Snow:Clouds':        'SnowWorldCloudBonusExStage.jpg',
-  'zone:Snow:Outfit':        'SnowWorldCostumeStage.jpg',
-  'zone:Snow:Shop':          'SnowWorldShopStage.jpg',
-
-  // Seaside zones
-  'zone:Seaside:Well Enter':     'SeaWorldUtsuboCaveStage.jpg',
-  'zone:Seaside:Well Exit':      'SeaWorldHomeStage.jpg',
-  'zone:Seaside:Rumble':         'SeaWorldVibrationStage.jpg',
-  'zone:Seaside:Rocket':         'CloudExStage.jpg',
-  'zone:Seaside:Outfit':         'SeaWorldCostumeStage.jpg',
-  'zone:Seaside:Gushen':         'WaterValleyExStage.jpg',
-  'zone:Seaside:Sphynx':         'SeaWorldSecretStage.jpg',
-  'zone:Seaside:Pokio':          'ReflectBombExStage.jpg',
-  'zone:Seaside:Lava Rising':    'SenobiTowerExStage.jpg',
-  'zone:Seaside:Sandy Bottom':   'SeaWorldSneakingManStage.jpg', 
-  'zone:Seaside:Spinning Maze':  'TogezoRotateExStage.jpg',
-
-  // Luncheon zones
-  'zone:Luncheon:Magma Swamp':       'LavaWorldUpDownExStage.jpg',
-  'zone:Luncheon:Forks':             'ForkExStage.jpg',
-  'zone:Luncheon:Cheese Rocks':      'LavaWorldExcavationExStage.jpg',
-  'zone:Luncheon:Veggie Room':       'LavaWorldTreasureStage.jpg',
-  'zone:Luncheon:Slots':             'LavaBonus1Zone.jpg',
-  'zone:Luncheon:Shop':              'LavaWorldShopStage.jpg',
-  'zone:Luncheon:Outfit':            'LavaWorldCostumeStage.jpg',
-  'zone:Luncheon:Spinning Athletics':'LavaWorldClockExStage.jpg',
-  'zone:Luncheon:Lava Islands':      'LavaWorldFenceLiftExStage.jpg',
-  'zone:Luncheon:Volcano Cave':      'CapAppearLavaLiftExStage.jpg',
-  'zone:Luncheon:Gears':             'GabuzouClockExStage.jpg',
-  'zone:Luncheon:Magma Path':        'LavaWorldBubbleLaneExStage.jpg',
-
-  // Ruined zones
-  "zone:Ruined:Chargin' Chuck": 'BullRunExStage.jpg',
-  'zone:Ruined:Rocket':         'DotTowerExStage.jpg',
-
-  // Bowser's zones
-  "zone:Bowser's:Jizo":          'JizoSwitchExStage.jpg',
-  "zone:Bowser's:Shop":          'SkyWorldShopStage.jpg',
-  "zone:Bowser's:Outfit":        'SkyWorldCostumeStage.jpg',
-  "zone:Bowser's:Treasure Room": 'SkyWorldTreasureStage.jpg',
-  "zone:Bowser's:Spinning Tower":'TsukkunRotateExStage.jpg',
-  "zone:Bowser's:Vine Clouds":   'SkyWorldCloudBonusExStage.jpg',
-  "zone:Bowser's:Hexagon Tower": 'KaronWingTowerStage.jpg',
-  "zone:Bowser's:Wooden Tower":  'TsukkunClimbExStage.jpg',
-
-  // Mushroom zones
-  'zone:Mushroom:Shop':        'PeachWorldShopStage.jpg',
-  'zone:Mushroom:Castle Door': 'PeachWorldCastleStage.jpg',
-  'zone:Mushroom:Outfit':      'PeachWorldCostumeStage.jpg',
-  'zone:Mushroom:Cloud Sea':   'YoshiCloudExStage.jpg',
-  'zone:Mushroom:Well':        'DotHardExStage.jpg',
-  'zone:Mushroom:Knucklotec':  'RevengeBossKnuckleStage.jpg',
-  'zone:Mushroom:Torkdrift':   'RevengeForestBossStage.jpg',
-  'zone:Mushroom:Mechawiggler':'high/RevengeMofumofuStage.jpg',
-  'zone:Mushroom:Octopus':     'high/RevengeGiantWanderBossStage.jpg',
-  'zone:Mushroom:Cookatiel':   'RevengeBossMagmaStage.jpg',
-  'zone:Mushroom:Dragon':      'high/RevengeBossRaidStage.jpg',
-  'zone:Mushroom:Rocket':      'FukuwaraiMarioStage.jpg',
-
-  // Darkside zones
-  'zone:Darkside:Breakdown':  'KillerRoadNoCapExStage.jpg',
-  'zone:Darkside:Invisible':  'PackunPoisonNoCapExStage.jpg',
-  'zone:Darkside:Vanishing':  'BikeSteelNoCapExStage.jpg',
-  'zone:Darkside:Yoshi Siege':  'ShootingCityYoshiExStage.jpg',
-  'zone:Darkside:Lava Rising':  'LavaWorldUpDownYoshiExStage.jpg',
-  'zone:Darkside:Magma Swamp':  'LavaWorldUpDownYoshiExStage.jpg',
-
-  // Darkerside zones
-  'zone:Darkerside:End': 'Special2WorldHomeStage.jpg',
-
-  //Moon zones
-  'zone:Moon:2D Snowman':  'Galaxy2DExStage.jpg',
-  'zone:Moon:Shop':        'MoonWorldShopRoom.jpg',
-  'zone:Moon:Swings':      'MoonAthleticExStage.jpg',
-  'zone:Moon:Sphynx':      'MoonWorldSphinxRoom.jpg',
-
-  //Cloud zones
-  'zone:Cloud:2D Cube':        'Cube2DExStage.jpg',
-  'zone:Cloud:Picture Match':  'FukuwaraiKuriboStage.jpg',
-};
 
 // ─────────────────────────────────────────────────────────────────
 // Chain color palette
@@ -1582,6 +1449,8 @@ const STORAGE_EDGE_CHAINS = 'smo_edge_chains';
 const STORAGE_CHAIN_META  = 'smo_chain_meta';
 const STORAGE_NOTES       = 'smo_map_notes';
 const STORAGE_NODE_POS    = 'smo_map_node_positions';
+const STORAGE_TEMPLATE    = 'cmap_template';       // the live, applied template
+const STORAGE_EDITOR_DRAFT= 'cmap_editor_draft';   // unsaved editor working copy
 
 // ─────────────────────────────────────────────────────────────────
 // Zone name overrides (from the main tracker's tracker_state)
@@ -1689,15 +1558,12 @@ const SELF_LOOP_DROP = 40; // how far a mid-to-in self-loop dips below its node
 let decoupled = false;
 let nodePositions = {};   // id → {x, y}, only used while decoupled
 
-// Kingdom visibility (which kingdoms are shown on the map). Missing = visible.
-let kingdomVisible = { Moon: false, Cloud: false };
+// (Kingdom-visibility toggles were removed; every group in the template shows.)
+let kingdomVisible = {};
 
-/** Section keys that should currently be rendered on the map, in order.
- *  When the painting tracker is on, the Paintings section is placed first
- *  (before Cascade) so it leads the grid when clearing / arranging. */
+/** Group keys to render on the map, in template order. */
 function visibleKingdomKeys() {
-  const keys = Object.keys(LOADING_ZONES_TEMPLATE).filter(k => kingdomVisible[k] !== false);
-  return paintingTracker ? [PAINTINGS_KEY, ...keys] : keys;
+  return groupOrder.slice();
 }
 
 // Chain state
@@ -1811,7 +1677,6 @@ function buildLayout() {
 
   kingdomKeys.forEach((key, idx) => {
     const data = sectionTemplate(key);
-    const isPaintings = key === PAINTINGS_KEY;
     const zoneNames = Object.keys(data.zones);
     const cw = clusterSizes[key]?.w ?? defaultClusterWidth();
     const autoH = clusterHeight(cw, zoneNames.length);
@@ -1852,14 +1717,10 @@ function buildLayout() {
       const r = Math.floor(i / zc);
       const c = i % zc;
       const zoneId = `zone:${key}:${zone}`;
-      // Painting entries are named after kingdoms, so tint them with that
-      // kingdom's own color for quick identification.
-      const zoneColor = isPaintings
-        ? (LOADING_ZONES_TEMPLATE[zone]?.color || data.color)
-        : data.color;
+      const zoneColor = data.color;
       nodes[zoneId] = {
         id: zoneId, label: zone, kingdomKey: key, type: 'zone',
-        painting: isPaintings,
+        painting: false,
         x: cx + CLUSTER_PAD + c * (NODE_W + ZONE_GAP_X),
         y: cy + CLUSTER_PAD + KINGDOM_NODE_H + 10 + r * (NODE_H + ZONE_GAP_Y),
         w: NODE_W, h: NODE_H, color: zoneColor,
@@ -1920,6 +1781,10 @@ function rebuildIncoming() {
 }
 
 function loadAll() {
+  // Template first: everything else (layout, nodes, dead-ends) derives from it.
+  template = loadTemplate();
+  applyTemplate();
+  saveTemplate(); // pin it so a reload always restores the same structure
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -2114,6 +1979,8 @@ function removeEdge(map, key, val) {
 /** True if an arrow from src's sPart to tgt's tPart is allowed. */
 function canConnect(src, sPart, tgt, tPart) {
   if (!nodes[src] || !nodes[tgt]) return false;
+  // A group header whose "make connections" toggle is off cannot be an endpoint.
+  if (!headerConnectable(src) || !headerConnectable(tgt)) return false;
   if (src === tgt) {
     // Self-loops are only allowed from the mid (name) segment back into the
     // node's own entrance -- e.g. "Rolling On" looping back into itself. The
@@ -2370,9 +2237,6 @@ function toggleMark(id, color) {
 const viewport   = document.getElementById('viewport');
 const canvasEl   = document.getElementById('canvas');
 const linesLayer = document.getElementById('lines-layer');
-const imageViewer= document.getElementById('image-viewer');
-const imgTitle   = document.getElementById('image-viewer-title');
-const imgBody    = document.getElementById('image-viewer-body');
 
 // ─────────────────────────────────────────────────────────────────
 // Full re-render
@@ -2728,13 +2592,6 @@ function renderNodes() {
     el.style.width  = n.w + 'px';
     el.style.height = n.h + 'px';
     el.style.borderColor = n.type === 'zone' ? hexWithAlpha(n.color, 0.5) : n.color;
-
-    if (n.type === 'kingdom' && n.icon) {
-      const img = document.createElement('img');
-      img.src = `assets/${n.icon}`;
-      img.alt = '';
-      el.appendChild(img);
-    }
 
     const label = document.createElement('span');
     label.className = 'node-label';
@@ -3304,179 +3161,7 @@ function applyHighlightClasses() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Image viewer
-// ─────────────────────────────────────────────────────────────────
-function openImageViewer(nodeId) {
-  const n = nodes[nodeId];
-  if (!n) return;
-  if (isPaintingNode(nodeId)) return; // paintings have no stage screenshots
-  const imgFile = ZONE_IMAGES[nodeId];
-  const isKingdom = n.type === 'kingdom';
-  const isTodo = imgFile === null;
-
-  // On mobile, clear any inline styles set by the desktop drag handler
-  // so the CSS @media (pointer: coarse) rules can position the viewer
-  if (IS_MOBILE) {
-    imageViewer.style.left = '';
-    imageViewer.style.top = '';
-    imageViewer.style.transform = '';
-    imageViewer.style.width = '';
-    imageViewer.style.height = '';
-  }
-  // Reset image zoom/pan every time a new image is opened
-  resetMobileImgZoom();
-
-  imgTitle.textContent = isKingdom ? `${n.label} Kingdom` : `${n.kingdomKey}: ${zoneDisplayLabel(n)}`;
-  imgTitle.style.color = n.color || 'var(--text)';
-
-  imgBody.innerHTML = '';
-
-  if (imgFile) {
-    const img = document.createElement('img');
-    img.src = BASE_IMG + imgFile;
-    img.alt = n.label;
-    img.onerror = () => {
-      img.style.display = 'none';
-      const p = document.createElement('div');
-      p.className = 'img-placeholder';
-      p.textContent = 'Image not found.\nFilename: ' + imgFile;
-      imgBody.appendChild(p);
-    };
-    imgBody.appendChild(img);
-  } else {
-    const p = document.createElement('div');
-    p.className = 'img-placeholder';
-    p.innerHTML = `No image mapped yet.<br><span class="img-todo">TODO: add image for ${n.label}</span>`;
-    imgBody.appendChild(p);
-  }
-
-  imageViewer.classList.add('visible');
-}
-
-function closeImageViewer() {
-  imageViewer.classList.remove('visible');
-}
-
-document.getElementById('image-viewer-close').addEventListener('click', closeImageViewer);
-
-// Close when clicking outside the viewer
-document.addEventListener('mousedown', (e) => {
-  if (imageViewer.classList.contains('visible') && !imageViewer.contains(e.target)) {
-    // Don't close if it's a node click (we'll handle that in wireNodeEvents)
-    if (!e.target.closest('.map-node')) closeImageViewer();
-  }
-});
-
-// Image viewer drag (header)
-(function() {
-  const header = document.getElementById('image-viewer-header');
-  let dragging = false, startX, startY, origLeft, origTop;
-
-  header.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    dragging = true;
-    startX = e.clientX; startY = e.clientY;
-    const rect = imageViewer.getBoundingClientRect();
-    origLeft = rect.left; origTop = rect.top;
-    imageViewer.style.transform = 'none';
-    imageViewer.style.left = origLeft + 'px';
-    imageViewer.style.top  = origTop + 'px';
-    e.preventDefault();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    imageViewer.style.left = (origLeft + e.clientX - startX) + 'px';
-    imageViewer.style.top  = (origTop  + e.clientY - startY) + 'px';
-  });
-
-  document.addEventListener('mouseup', () => { dragging = false; });
-})();
-
-// Image viewer resize (bottom-right handle)
-(function() {
-  const resizeHandle = document.getElementById('image-viewer-resize');
-  let resizing = false, startX, startY, origW, origH;
-
-  resizeHandle.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    resizing = true;
-    startX = e.clientX; startY = e.clientY;
-    origW = imageViewer.offsetWidth;
-    origH = imageViewer.offsetHeight;
-    e.preventDefault(); e.stopPropagation();
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!resizing) return;
-    const newW = Math.max(180, origW + (e.clientX - startX));
-    const newH = Math.max(120, origH + (e.clientY - startY));
-    imageViewer.style.width  = newW + 'px';
-    imageViewer.style.height = newH + 'px';
-  });
-
-  document.addEventListener('mouseup', () => { resizing = false; });
-})();
-
-// ─────────────────────────────────────────────────────────────────
-// Mobile image viewer: pinch-to-zoom and single-finger pan
-// ─────────────────────────────────────────────────────────────────
-(function() {
-  let touchMode = null; // 'pinch' | 'pan' | null
-  let pinchStartDist = 0, pinchStartScale = 1;
-  let panStartX = 0, panStartY = 0, panStartImgX = 0, panStartImgY = 0;
-
-  imgBody.addEventListener('touchstart', (e) => {
-    if (!imageViewer.classList.contains('visible')) return;
-    e.preventDefault(); e.stopPropagation();
-
-    if (e.touches.length >= 2) {
-      touchMode = 'pinch';
-      pinchStartDist = Math.hypot(
-        e.touches[1].clientX - e.touches[0].clientX,
-        e.touches[1].clientY - e.touches[0].clientY
-      );
-      pinchStartScale = mobileImgScale;
-    } else if (e.touches.length === 1) {
-      touchMode = 'pan';
-      panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
-      panStartImgX = mobileImgPanX;     panStartImgY = mobileImgPanY;
-    }
-  }, { passive: false });
-
-  imgBody.addEventListener('touchmove', (e) => {
-    if (!imageViewer.classList.contains('visible')) return;
-    e.preventDefault(); e.stopPropagation();
-
-    if (touchMode === 'pinch' && e.touches.length >= 2) {
-      const dist = Math.hypot(
-        e.touches[1].clientX - e.touches[0].clientX,
-        e.touches[1].clientY - e.touches[0].clientY
-      );
-      mobileImgScale = Math.max(1, Math.min(5, pinchStartScale * (dist / pinchStartDist)));
-      applyMobileImgTransform();
-    } else if (touchMode === 'pan' && e.touches.length === 1 && mobileImgScale > 1) {
-      // Only pan when zoomed in (at scale 1 the image already fits the viewer)
-      mobileImgPanX = panStartImgX + (e.touches[0].clientX - panStartX);
-      mobileImgPanY = panStartImgY + (e.touches[0].clientY - panStartY);
-      applyMobileImgTransform();
-    }
-  }, { passive: false });
-
-  imgBody.addEventListener('touchend', (e) => {
-    if (e.touches.length === 0) {
-      touchMode = null;
-    } else if (e.touches.length === 1 && touchMode === 'pinch') {
-      // Fingers reduced from 2 → 1: switch to pan mode seamlessly
-      touchMode = 'pan';
-      panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
-      panStartImgX = mobileImgPanX;     panStartImgY = mobileImgPanY;
-    }
-  });
-
-  imgBody.addEventListener('touchcancel', () => { touchMode = null; });
-})();
+// (Image viewer removed with the modular rewrite, stage previews are gone.)
 
 // ─────────────────────────────────────────────────────────────────
 // Node interaction
@@ -3637,24 +3322,15 @@ function wireNodeEvents(el, id) {
       e.stopPropagation();
       mouseDownTime = Date.now();
       mouseDownPos = { x: e.clientX, y: e.clientY };
-      const startPart = normalizePart(id, partAtPoint(el, e.clientX));
-      connecting = { id, part: startPart };
       nodePressFired = false;
-      const origin = dragOrigin(id, startPart);
-      previewLine = drawLine(origin, origin, arrowColor, false);
-      previewLine.setAttribute('stroke-dasharray','5,4');
-      // Hold for 1s (without moving) opens the stage preview, as on mobile.
-      if (showImages && !isPaintingNode(id)) {
-        clearTimeout(nodePressTimer);
-        nodePressTimer = setTimeout(() => {
-          nodePressTimer = null;
-          nodePressFired = true;
-          // Cancel the pending connection drag and show the screenshot instead
-          connecting = null;
-          if (previewLine) { previewLine.remove(); previewLine = null; }
-          canvasEl.querySelectorAll('.map-node.drag-target').forEach(n => n.classList.remove('drag-target'));
-          openImageViewer(id);
-        }, 1000);
+      // A group header whose "make connections" toggle is off is a plain label:
+      // it can still be clicked to highlight, but never starts an arrow.
+      if (headerConnectable(id)) {
+        const startPart = normalizePart(id, partAtPoint(el, e.clientX));
+        connecting = { id, part: startPart };
+        const origin = dragOrigin(id, startPart);
+        previewLine = drawLine(origin, origin, arrowColor, false);
+        previewLine.setAttribute('stroke-dasharray','5,4');
       }
     } else if (e.button === 1) {
       e.preventDefault(); e.stopPropagation();
@@ -3762,30 +3438,18 @@ function handleNodeTouchStart(e, id) {
   const startPart = normalizePart(id, nodeEl ? partAtPoint(nodeEl, startX) : PART_MID);
   let moved = false, dragStarted = false;
 
-  // ── Long-press → open stage preview (1 s, only when Stage Previews is on) ──
-  // Timer is cancelled the moment the finger moves past the movement threshold,
-  // so it can never fire during an intentional connection drag.
+  // (Stage-preview long-press removed.) longPressTimer stays null/inert so the
+  // existing clear() calls below remain harmless.
   let longPressTimer = null;
-  if (showImages) {
-    longPressTimer = setTimeout(() => {
-      longPressTimer = null;
-      if (!moved) {
-        // Consume the touch gesture. Remove all listeners before opening the viewer
-        document.removeEventListener('touchmove', onMove);
-        document.removeEventListener('touchend', onEnd);
-        document.removeEventListener('touchcancel', onCancel);
-        connecting = null;
-        openImageViewer(id);
-      }
-    }, 1000);
-  }
 
   function onMove(ev) {
     if (ev.touches.length !== 1) return;
     const ct = ev.touches[0];
     if (!moved && Math.hypot(ct.clientX-startX, ct.clientY-startY) > TAP_MOVE_THRESHOLD) {
-      moved = true; dragStarted = true;
-      // User is dragging, cancel the long-press immediately
+      moved = true;
+      // A non-connectable group header never starts an arrow drag.
+      if (!headerConnectable(id)) return;
+      dragStarted = true;
       if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
       connecting = { id, part: startPart };
       const tOrigin = dragOrigin(id, startPart);
@@ -4325,18 +3989,14 @@ document.getElementById('btn-display').addEventListener('click', (e) => {
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Clear all connections, marks, and notes on the map?')) return;
-  edgeList=[]; outgoing={}; incoming={}; marks={};
+  if (!confirm('Remove all connection arrows from the map? Your groups, nodes, marks, and notes are kept.')) return;
+  edgeList=[]; outgoing={}; incoming={};
   edgeChains={}; chainColors={}; nextChainId=0;
   hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
   closeActiveChainPicker();
   recomputeChainLabels();
   saveState();
   saveEdgeChains();
-  clearNotes();
-  // Clearing also resets any decoupled node positions back to the grouped layout.
-  clearNodePositions();
-  canvasEl.querySelectorAll('.map-node').forEach(el => el.classList.remove('mark-green','mark-red'));
   fullRender();
 });
 
@@ -4350,15 +4010,6 @@ document.getElementById('btn-apply-grid').addEventListener('click', () => {
   const numKingdoms = visibleKingdomKeys().length;
   const r = Math.ceil(numKingdoms / c);
   applyGrid(r, c);
-});
-
-// Settings: stage previews toggle
-const toggleImages = document.getElementById('toggle-images');
-const toggleImagesLabel = document.getElementById('toggle-images-label');
-toggleImages.addEventListener('change', () => {
-  showImages = toggleImages.checked;
-  toggleImagesLabel.textContent = showImages ? 'On' : 'Off';
-  saveSettings();
 });
 
 // Settings: brief "Saved!" confirmation flash next to a save button
@@ -4387,16 +4038,6 @@ toggleHighlight.addEventListener('change', () => {
   toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
   saveSettings();
   applyHighlightClasses();
-});
-
-// Settings: painting tracker toggle
-const togglePainting = document.getElementById('toggle-painting');
-const togglePaintingLabel = document.getElementById('toggle-painting-label');
-togglePainting.addEventListener('change', () => {
-  paintingTracker = togglePainting.checked;
-  togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
-  saveSettings();
-  fullRender();
 });
 
 // Settings: segmented nodes toggle + label-style dropdown
@@ -4464,11 +4105,11 @@ document.getElementById('btn-save-highlight-color').addEventListener('click', ()
   flashSaved('highlight-color-saved');
 });
 
-// Arrow color mode toggles: Random Color / One Color / Kingdom Gradients.
+// Arrow color mode toggles: Random Color / One Color / Group Gradients.
 // Only one may be on at a time.
 const toggleRandomColors     = document.getElementById('toggle-random-colors');
 const toggleOneColor         = document.getElementById('toggle-one-color');
-const toggleKingdomGradients = document.getElementById('toggle-kingdom-gradients');
+const toggleKingdomGradients = document.getElementById('toggle-group-gradients');
 const arrowModeToggles = [toggleRandomColors, toggleOneColor, toggleKingdomGradients].filter(Boolean);
 
 function setArrowColorMode(mode) {
@@ -4489,16 +4130,6 @@ arrowModeToggles.forEach(toggle => {
       return;
     }
     setArrowColorMode(toggle.dataset.mode);
-  });
-});
-
-// Settings: kingdom visibility toggles
-document.querySelectorAll('[id^="toggle-kingdom-"]').forEach(toggle => {
-  toggle.addEventListener('change', () => {
-    const key = toggle.dataset.kingdom;
-    kingdomVisible[key] = toggle.checked;
-    saveSettings();
-    fullRender();
   });
 });
 
@@ -4555,7 +4186,7 @@ function createNoteElement(note) {
   return el;
 }
 
-// Fill a note's content element with its parsed display (text + {icon} images).
+// Fill a note's content element with its text.
 function renderNoteDisplay(note, content) {
   content.innerHTML = '';
   const text = note.text || '';
@@ -4565,7 +4196,12 @@ function renderNoteDisplay(note, content) {
     return;
   }
   content.classList.remove('empty-note-hint');
+  content.textContent = text;
+}
 
+// (Legacy {icon}-token helpers kept below but no longer used by rendering.)
+function _unusedNoteIconRender(note, content) {
+  const text = note.text || '';
   let last = 0, tokenIndex = 0, m;
   NOTE_ICON_RE.lastIndex = 0;
   while ((m = NOTE_ICON_RE.exec(text)) !== null) {
@@ -4848,6 +4484,301 @@ viewport.addEventListener('touchend', (e) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────
+// Template persistence + editor
+// ─────────────────────────────────────────────────────────────────
+let editorDraft = null;
+
+/** Coerce any parsed object into a clean, valid template. */
+function normalizeTemplate(t) {
+  const groups = (t && Array.isArray(t.groups) ? t.groups : []).map(g => ({
+    name:  (g && g.name != null) ? String(g.name) : 'Group',
+    color: (g && typeof g.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(g.color)) ? g.color : '#5865f2',
+    headerConnectable: !(g && g.headerConnectable === false),
+    nodes: (g && Array.isArray(g.nodes) ? g.nodes : []).map(nd => ({
+      name: (nd && nd.name != null) ? String(nd.name) : 'Node',
+      deadEnd: !!(nd && nd.deadEnd),
+    })),
+  }));
+  return { version: 1, groups };
+}
+
+function loadTemplate() {
+  try {
+    const raw = localStorage.getItem(STORAGE_TEMPLATE);
+    if (raw) { const t = JSON.parse(raw); if (t && Array.isArray(t.groups)) return normalizeTemplate(t); }
+  } catch (e) {}
+  return cloneTemplate(DEFAULT_TEMPLATE);
+}
+function saveTemplate() {
+  try { localStorage.setItem(STORAGE_TEMPLATE, JSON.stringify(template)); } catch (e) {}
+}
+function loadEditorDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_EDITOR_DRAFT);
+    if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.groups)) return normalizeTemplate(d); }
+  } catch (e) {}
+  return null;
+}
+function saveEditorDraft() {
+  try { localStorage.setItem(STORAGE_EDITOR_DRAFT, JSON.stringify(editorDraft)); } catch (e) {}
+  setDraftDirty(true);
+}
+
+/** After the template changes, drop connections/marks/chains that reference
+ *  nodes which no longer exist, and keep the rest. Requires buildLayout() first. */
+function pruneToTemplate() {
+  const valid = new Set(Object.keys(nodes));
+  const oldChains = edgeChains;
+  edgeList = edgeList.filter(e => valid.has(e.src) && valid.has(e.tgt));
+  edgeList.forEach(e => { e.sPart = normalizePart(e.src, e.sPart); e.tPart = normalizePart(e.tgt, e.tPart); });
+  // De-dupe any edges that collapsed onto the same key after normalization.
+  const seen = new Set();
+  edgeList = edgeList.filter(e => { const k = edgeKeyOf(e); if (seen.has(k)) return false; seen.add(k); return true; });
+  rebuildAdjacency();
+  Object.keys(marks).forEach(id => { if (!valid.has(id)) delete marks[id]; });
+  // Re-map chain ids onto the surviving edges (best-effort).
+  const newChains = {};
+  edgeList.forEach(e => {
+    const nk = edgeKeyOf(e);
+    if (oldChains[nk] !== undefined) { newChains[nk] = oldChains[nk]; return; }
+    for (const [k, cid] of Object.entries(oldChains)) {
+      const p = parseEkey(k);
+      if (p && p.src === e.src && p.tgt === e.tgt) { newChains[nk] = cid; break; }
+    }
+  });
+  edgeChains = newChains;
+}
+
+/** Commit the editor draft to the live map.
+ *  opts.wipe = true clears all arrows/marks/notes (used for JSON uploads). */
+function applyEditorToMap(opts) {
+  opts = opts || {};
+  const wipe = !!opts.wipe;
+  template = cloneTemplate(editorDraft);
+  saveTemplate();
+  applyTemplate();
+
+  // Structure changed → reset manual panel layout so the new set lays out cleanly.
+  clusterPositions = {}; clusterSizes = {}; clearNodePositions();
+  gridCols = Math.min(Math.max(1, gridCols || 4), 15);
+  gridRows = Math.max(1, Math.ceil(visibleKingdomKeys().length / gridCols));
+  savePositions(); saveSizes(); saveGrid();
+  const colsInput = document.getElementById('grid-cols');
+  if (colsInput) colsInput.value = gridCols;
+
+  buildLayout();
+
+  if (wipe) {
+    edgeList = []; outgoing = {}; incoming = {}; marks = {};
+    edgeChains = {}; chainColors = {}; nextChainId = 0;
+    clearNotes();
+  } else {
+    pruneToTemplate();
+  }
+
+  hoverHighlightChainId = null; pinnedHighlightChainId = null; pinnedHighlightNodeId = null;
+  closeActiveChainPicker();
+  recomputeChainLabels();
+  saveState();
+  saveEdgeChains();
+
+  // Draft applied: discard it so reopening reflects the live template.
+  try { localStorage.removeItem(STORAGE_EDITOR_DRAFT); } catch (e) {}
+  editorDraft = null;
+
+  fullRender();
+}
+
+// ── Editor UI ──────────────────────────────────────────────────────
+const editorOverlay   = document.getElementById('editor-overlay');
+const editorGroupsEl  = document.getElementById('editor-groups');
+const editorBodyEl    = document.getElementById('editor-modal-body');
+const editorDraftNote = document.getElementById('editor-draft-note');
+
+function setDraftDirty(dirty) {
+  if (!editorDraftNote) return;
+  editorDraftNote.textContent = dirty ? 'Unsaved edits: auto-saved' : '';
+  editorDraftNote.classList.toggle('dirty', dirty);
+}
+
+function openEditor() {
+  const d = loadEditorDraft();
+  editorDraft = d || cloneTemplate(template);
+  setDraftDirty(!!d);
+  renderEditor();
+  editorOverlay.classList.add('visible');
+}
+function closeEditor() { editorOverlay.classList.remove('visible'); }
+
+function renderEditor() {
+  editorGroupsEl.innerHTML = '';
+  if (!editorDraft.groups.length) {
+    const empty = document.createElement('div');
+    empty.className = 'editor-empty';
+    empty.textContent = 'No groups yet. Click "+ Add Group" to start building your map.';
+    editorGroupsEl.appendChild(empty);
+    return;
+  }
+  editorDraft.groups.forEach((g, gi) => editorGroupsEl.appendChild(buildGroupCard(g, gi)));
+}
+
+function buildGroupCard(g, gi) {
+  const card = document.createElement('div');
+  card.className = 'editor-group';
+  card.style.borderLeftColor = g.color || '#888';
+
+  const head = document.createElement('div');
+  head.className = 'editor-group-head';
+
+  const color = document.createElement('input');
+  color.type = 'color';
+  color.value = /^#[0-9a-fA-F]{6}$/.test(g.color || '') ? g.color : '#5865f2';
+  color.title = 'Group color (applies to its header and nodes)';
+  color.addEventListener('input', () => { g.color = color.value; card.style.borderLeftColor = color.value; saveEditorDraft(); });
+
+  const name = document.createElement('input');
+  name.type = 'text';
+  name.className = 'editor-group-name';
+  name.value = g.name;
+  name.placeholder = 'Group name';
+  name.addEventListener('input', () => { g.name = name.value; saveEditorDraft(); });
+
+  const hdrLbl = document.createElement('label');
+  hdrLbl.className = 'editor-hdr-toggle';
+  hdrLbl.title = 'When on, this group\u2019s header can start/receive connection arrows.';
+  const hdr = document.createElement('input');
+  hdr.type = 'checkbox';
+  hdr.checked = g.headerConnectable !== false;
+  hdr.addEventListener('change', () => { g.headerConnectable = hdr.checked; saveEditorDraft(); });
+  hdrLbl.appendChild(hdr);
+  hdrLbl.appendChild(document.createTextNode('Header connects'));
+
+  const del = document.createElement('button');
+  del.className = 'editor-del-btn';
+  del.textContent = '\u2715';
+  del.title = 'Delete this group';
+  del.addEventListener('click', () => { editorDraft.groups.splice(gi, 1); saveEditorDraft(); renderEditor(); });
+
+  head.append(color, name, hdrLbl, del);
+  card.appendChild(head);
+
+  const nodesWrap = document.createElement('div');
+  nodesWrap.className = 'editor-nodes';
+  g.nodes.forEach((nd, ni) => nodesWrap.appendChild(buildNodeRow(g, nd, ni)));
+
+  const addNode = document.createElement('button');
+  addNode.className = 'editor-add-node';
+  addNode.textContent = '+ Add Node';
+  addNode.addEventListener('click', () => { g.nodes.push({ name: 'New Node', deadEnd: false }); saveEditorDraft(); renderEditor(); });
+  nodesWrap.appendChild(addNode);
+
+  card.appendChild(nodesWrap);
+  return card;
+}
+
+function buildNodeRow(g, nd, ni) {
+  const row = document.createElement('div');
+  row.className = 'editor-node-row';
+
+  const nm = document.createElement('input');
+  nm.type = 'text';
+  nm.className = 'editor-node-name';
+  nm.value = nd.name;
+  nm.placeholder = 'Node name';
+  nm.addEventListener('input', () => { nd.name = nm.value; saveEditorDraft(); });
+
+  const deLbl = document.createElement('label');
+  deLbl.className = 'editor-deadend-toggle';
+  deLbl.title = 'A dead end can only receive one incoming arrow (drawn with stripes).';
+  const de = document.createElement('input');
+  de.type = 'checkbox';
+  de.checked = !!nd.deadEnd;
+  de.addEventListener('change', () => { nd.deadEnd = de.checked; saveEditorDraft(); });
+  deLbl.appendChild(de);
+  deLbl.appendChild(document.createTextNode('Dead end'));
+
+  const del = document.createElement('button');
+  del.className = 'editor-del-btn';
+  del.textContent = '\u2715';
+  del.title = 'Delete this node';
+  del.addEventListener('click', () => { g.nodes.splice(ni, 1); saveEditorDraft(); renderEditor(); });
+
+  row.append(nm, deLbl, del);
+  return row;
+}
+
+// Download the current template (editor draft if editing, else the live one).
+function downloadTemplateJSON() {
+  const data = JSON.stringify(editorDraft || template, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'connection-map-template.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Upload a template file: replaces the map and clears all arrows/marks/notes.
+function handleTemplateUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try { parsed = JSON.parse(reader.result); }
+    catch (err) { alert('That file is not valid JSON.'); return; }
+    if (!parsed || !Array.isArray(parsed.groups)) {
+      alert('This does not look like a template file (it needs a "groups" list).');
+      return;
+    }
+    if (!confirm('Upload this template? It replaces the current map and clears all arrows, marks, and notes.')) return;
+    editorDraft = normalizeTemplate(parsed);
+    saveEditorDraft();
+    renderEditor();
+    applyEditorToMap({ wipe: true });
+    setDraftDirty(false);
+  };
+  reader.readAsText(file);
+}
+
+// Toolbar
+document.getElementById('editor-add-group').addEventListener('click', () => {
+  editorDraft.groups.push({ name: 'New Group', color: '#5865f2', headerConnectable: true, nodes: [] });
+  saveEditorDraft();
+  renderEditor();
+  if (editorBodyEl) editorBodyEl.scrollTop = editorBodyEl.scrollHeight;
+});
+document.getElementById('editor-clear').addEventListener('click', () => {
+  if (!confirm('Empty the editor? This removes every group here. The map on screen is not changed until you press "Apply to Map".')) return;
+  editorDraft = { version: 1, groups: [] };
+  saveEditorDraft();
+  renderEditor();
+});
+document.getElementById('editor-download').addEventListener('click', downloadTemplateJSON);
+document.getElementById('editor-upload').addEventListener('click', () => document.getElementById('editor-file-input').click());
+document.getElementById('editor-file-input').addEventListener('change', handleTemplateUpload);
+document.getElementById('editor-apply').addEventListener('click', () => {
+  applyEditorToMap({ wipe: false });
+  setDraftDirty(false);
+  closeEditor();
+});
+document.getElementById('editor-modal-close').addEventListener('click', closeEditor);
+editorOverlay.addEventListener('click', (e) => { if (e.target === editorOverlay) closeEditor(); });
+
+// Entry points: topbar button + the Settings row buttons.
+document.getElementById('btn-editor').addEventListener('click', openEditor);
+document.getElementById('btn-open-editor-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.remove('visible');
+  openEditor();
+});
+document.getElementById('btn-download-template-settings').addEventListener('click', downloadTemplateJSON);
+document.getElementById('btn-upload-template-settings').addEventListener('click', () => document.getElementById('editor-file-input').click());
+
 function init() {
   loadAll();
   refreshZoneNameCache();
@@ -4866,15 +4797,11 @@ function init() {
 
   // Sync UI with loaded settings
   document.getElementById('grid-cols').value = gridCols;
-  toggleImages.checked = showImages;
-  toggleImagesLabel.textContent = showImages ? 'On' : 'Off';
   arrowColorInput.value = arrowColor;
   highlightColorInput.value = highlightColor;
   document.documentElement.style.setProperty('--highlight-color', highlightColor);
   toggleHighlight.checked = highlightEnabled;
   toggleHighlightLabel.textContent = highlightEnabled ? 'On' : 'Off';
-  togglePainting.checked = paintingTracker;
-  togglePaintingLabel.textContent = paintingTracker ? 'On' : 'Off';
   toggleSegmented.checked = segmentedNodes;
   toggleSegmentedLabel.textContent = segmentedNodes ? 'On' : 'Off';
   segmentStyleSelect.value = segmentStyle;
@@ -4885,9 +4812,6 @@ function init() {
   // Sync new settings UI
   arrowModeToggles.forEach(t => { t.checked = (t.dataset.mode === arrowColorMode); });
   if (displayPositionSelect) displayPositionSelect.value = displayPosition;
-  document.querySelectorAll('[id^="toggle-kingdom-"]').forEach(t => {
-    t.checked = kingdomVisible[t.dataset.kingdom] !== false;
-  });
 
   buildLayout();
   canvasEl.style.width = canvasW + 'px';
